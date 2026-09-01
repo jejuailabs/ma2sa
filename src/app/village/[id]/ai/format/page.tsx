@@ -1,14 +1,16 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { FileText, Loader2, Copy, Check, Download, Upload, Eye, X, FileUp, FileCheck2 } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
-import { saveAITask, updateAITask } from '@/lib/firebase/firestore';
+import { getVillage, saveAITask, updateAITask } from '@/lib/firebase/firestore';
 import { uploadFile } from '@/lib/firebase/storage';
 import { useAuth } from '@/hooks/useAuth';
+import type { FormDefaults } from '@/types/village';
 
 type TemplateField = { id: string; label: string; hint: string };
 type OutputFile = { url: string; name: string; type: string };
+const EMPTY_FORM_DEFAULTS: FormDefaults = { organizationName: '', representativeName: '', representativePhone: '', contactName: '', contactPhone: '', email: '' };
 
 export default function FormatPage({ params }: { params: { id: string } }) {
   const { id } = params;
@@ -25,6 +27,7 @@ export default function FormatPage({ params }: { params: { id: string } }) {
   const [templatePreview, setTemplatePreview] = useState('');
   const [templateText, setTemplateText] = useState('');
   const [templateFields, setTemplateFields] = useState<TemplateField[]>([]);
+  const [formDefaults, setFormDefaults] = useState<FormDefaults>(EMPTY_FORM_DEFAULTS);
   const [templateInspecting, setTemplateInspecting] = useState(false);
   const [showTemplatePreview, setShowTemplatePreview] = useState(false);
 
@@ -34,6 +37,13 @@ export default function FormatPage({ params }: { params: { id: string } }) {
   const [exportingPdf, setExportingPdf] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    getVillage(id).then((village) => {
+      if (!village) return;
+      setFormDefaults({ ...EMPTY_FORM_DEFAULTS, ...village.formDefaults, organizationName: village.formDefaults?.organizationName || village.name || '' });
+    }).catch(() => {});
+  }, [id]);
 
   const extractText = async (f: File): Promise<string> => {
     const formData = new FormData();
@@ -133,6 +143,8 @@ export default function FormatPage({ params }: { params: { id: string } }) {
         instruction += '원문의 근거가 없는 정보는 추정하지 말고 빈칸 또는 “확인 필요”로 표시하세요.';
       } else {
         instruction += `[양식에서 찾은 입력 항목]\n${templateFields.map((field) => `- id: ${field.id}\n  항목: ${field.label}\n  안내: ${field.hint}`).join('\n')}\n\n`;
+        const defaultsText = getRegisteredDefaultsText(formDefaults);
+        if (defaultsText) instruction += `[마을에 등록된 기본값 - 같은 항목에는 이 값을 우선 사용]\n${defaultsText}\n\n`;
         instruction += '각 항목에 넣을 값만 작성하세요. 원문에 근거가 없으면 빈 문자열로 두세요.';
       }
 
@@ -170,7 +182,7 @@ export default function FormatPage({ params }: { params: { id: string } }) {
         try { if (taskId) await updateAITask(id, taskId, { outputText: data.text, outputData: { format: 'pdf' }, status: 'completed', stage: 'PDF 문서 초안 생성 완료', errorMessage: '' }); } catch {}
         return;
       }
-      const values = parseTemplateValues(data.text, templateFields);
+      const values = applyRegisteredDefaults(parseTemplateValues(data.text, templateFields), templateFields, formDefaults);
       const fillFormData = new FormData();
       fillFormData.append('file', templateFile);
       fillFormData.append('values', JSON.stringify(values));
@@ -311,6 +323,7 @@ export default function FormatPage({ params }: { params: { id: string } }) {
                 <div className="rounded-xl border border-primary/20 bg-primary-light/40 p-3">
                   <p className="flex items-center gap-1.5 text-xs font-bold text-primary mb-2"><FileCheck2 className="w-3.5 h-3.5" /> 채울 항목 {templateFields.length}개를 찾았습니다</p>
                   <div className="flex flex-wrap gap-1.5">{templateFields.slice(0, 12).map((field) => <span key={field.id} className="px-2 py-1 rounded-md bg-white/80 text-[11px] text-[var(--color-text)] border border-primary/10">{field.label}</span>)}</div>
+                  {getRegisteredDefaultsText(formDefaults) && <p className="mt-2 text-[11px] text-[var(--color-text-secondary)]">등록된 양식 기본값을 자동 적용합니다.</p>}
                 </div>
               )}
 
@@ -386,6 +399,27 @@ function parseTemplateValues(responseText: string, fields: TemplateField[]) {
   const values: Record<string, string> = Object.fromEntries(fields.map((field) => [field.id, '']));
   parsed.fields?.forEach((field) => {
     if (field.id && allowed.has(field.id)) values[field.id] = typeof field.value === 'string' ? field.value.trim() : '';
+  });
+  return values;
+}
+
+function getRegisteredDefaultsText(defaults: FormDefaults) {
+  return [
+    ['마을명/단체명', defaults.organizationName], ['대표자', defaults.representativeName], ['대표자 연락처', defaults.representativePhone],
+    ['담당자', defaults.contactName], ['담당자 연락처', defaults.contactPhone], ['이메일', defaults.email],
+  ].filter(([, value]) => Boolean(value)).map(([label, value]) => `- ${label}: ${value}`).join('\n');
+}
+
+function applyRegisteredDefaults(values: Record<string, string>, fields: TemplateField[], defaults: FormDefaults) {
+  fields.forEach((field) => {
+    const label = field.label.replace(/\s+/g, '');
+    const defaultValue = /마을명|단체명/.test(label) ? defaults.organizationName
+      : /대표자.*연락|연락.*대표자/.test(label) ? defaults.representativePhone
+        : /대표자/.test(label) ? defaults.representativeName
+          : /담당자.*연락|연락.*담당자/.test(label) ? defaults.contactPhone
+            : /담당자/.test(label) ? defaults.contactName
+              : /이메일|e-?mail/i.test(label) ? defaults.email : '';
+    if (defaultValue) values[field.id] = defaultValue;
   });
   return values;
 }

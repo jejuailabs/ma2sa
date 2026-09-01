@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { FileText, Receipt, Mic, Volume2, FileSearch, ClipboardList, Search, Loader2, Trash2, ChevronDown, ChevronUp, AlertCircle, Clock3, CheckCircle2 } from 'lucide-react';
+import { FileText, Receipt, Mic, Volume2, FileSearch, ClipboardList, Search, Loader2, Trash2, ChevronDown, ChevronUp, AlertCircle, Clock3, CheckCircle2, Download } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { subscribeAITasks, deleteAITask } from '@/lib/firebase/firestore';
 import type { AITask, AITaskType } from '@/types/feed';
@@ -163,13 +163,13 @@ export default function AITaskListPage({ params }: { params: { id: string } }) {
                           <h4 className="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-2">결과 (출력)</h4>
                           <div className="bg-[var(--color-surface)] rounded-xl p-4 max-h-64 overflow-auto">
                             {task.type === 'receipt' && task.outputData ? (
-                              <ReceiptTable rows={task.outputData as ReceiptRow[]} />
+                              <div className="space-y-3"><button onClick={() => downloadTaskResult(task)} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-bold hover:border-primary"><Download className="h-3.5 w-3.5" />엑셀용 CSV 다운로드</button><ReceiptTable rows={task.outputData as ReceiptRow[]} /></div>
                             ) : task.type === 'narration' && getAudioUrl(task.outputData) ? (
-                              <div className="space-y-2"><audio controls src={getAudioUrl(task.outputData)} className="w-full" /><p className="text-xs text-[var(--color-text-secondary)]">저장된 MP3 결과물</p></div>
+                              <div className="space-y-2"><a href={getAudioUrl(task.outputData)} download={`${task.title}.mp3`} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-bold hover:border-primary"><Download className="h-3.5 w-3.5" />MP3 다운로드</a><audio controls src={getAudioUrl(task.outputData)} className="w-full" /><p className="text-xs text-[var(--color-text-secondary)]">저장된 MP3 결과물</p></div>
                             ) : task.type === 'format' && getOutputFile(task.outputData).url ? (
                               <div className="space-y-3"><a href={getOutputFile(task.outputData).url} download={getOutputFile(task.outputData).name} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-bold">다운로드: {getOutputFile(task.outputData).name}</a><p className="text-sm whitespace-pre-wrap">{task.outputText}</p></div>
                             ) : task.outputText ? (
-                              <p className="text-sm whitespace-pre-wrap">{task.outputText}</p>
+                              <div className="space-y-3"><button onClick={() => downloadTaskResult(task)} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-bold hover:border-primary"><Download className="h-3.5 w-3.5" />결과 텍스트 다운로드</button><p className="text-sm whitespace-pre-wrap">{task.outputText}</p></div>
                             ) : (
                               <p className="text-sm text-[var(--color-text-secondary)]">{task.status === 'processing' ? '(AI가 결과를 만드는 중입니다)' : '(결과 없음)'}</p>
                             )}
@@ -198,6 +198,29 @@ function getOutputFile(outputData: unknown) {
   if (!outputData || typeof outputData !== 'object') return { url: '', name: '' };
   const data = outputData as { fileUrl?: unknown; fileName?: unknown };
   return { url: typeof data.fileUrl === 'string' ? data.fileUrl : '', name: typeof data.fileName === 'string' ? data.fileName : '작성된 양식' };
+}
+
+function downloadTaskResult(task: AITask) {
+  const isReceipt = task.type === 'receipt' && Array.isArray(task.outputData);
+  const content = isReceipt ? receiptRowsToCsv(task.outputData as ReceiptRow[]) : task.outputText;
+  const extension = isReceipt ? 'csv' : 'txt';
+  const mimeType = isReceipt ? 'text/csv;charset=utf-8;' : 'text/plain;charset=utf-8;';
+  const safeTitle = task.title.replace(/[\\/:*?"<>|]/g, '_').slice(0, 80) || 'AI_결과물';
+  const blob = new Blob([isReceipt ? '\uFEFF' : '', content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${safeTitle}.${extension}`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function receiptRowsToCsv(rows: ReceiptRow[]) {
+  const escape = (value: string) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+  const header = ['날짜', '품목', '수량', '단가', '금액', '구매처', '분류', '비고'];
+  return [header, ...rows.map((row) => [row.date, row.item, row.quantity, row.unitPrice, row.amount, row.store, row.category, row.note])]
+    .map((row) => row.map(escape).join(','))
+    .join('\r\n');
 }
 
 function ReceiptTable({ rows }: { rows: ReceiptRow[] }) {

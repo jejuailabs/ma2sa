@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  BarChart3, Bot, ClipboardList, Globe, Home, Newspaper, Settings, Users, Wallet, Calendar,
+  BarChart3, Bot, ClipboardList, Globe, Home, Newspaper, Settings, Users, Wallet, Calendar, FilePenLine,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +24,7 @@ const MAIN_MENU = [
 ];
 
 const MANAGE_MENU = [
+  { icon: FilePenLine, label: '양식 기본값', path: '/form-defaults' },
   { icon: Settings, label: '설정', path: '/settings' },
 ];
 

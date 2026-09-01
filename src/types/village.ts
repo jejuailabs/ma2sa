@@ -12,6 +12,16 @@ export interface Village {
   createdAt: Date;
   memberCount: number;
   settings: VillageSettings;
+  formDefaults?: FormDefaults;
+}
+
+export interface FormDefaults {
+  organizationName: string;
+  representativeName: string;
+  representativePhone: string;
+  contactName: string;
+  contactPhone: string;
+  email: string;
 }
 
 export interface VillageSettings {

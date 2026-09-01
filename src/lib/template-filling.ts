@@ -169,12 +169,16 @@ function fillXmlFields(xml: string, config: FormatConfig, sectionIndex: number, 
     let rowIndex = 0;
     return table.replace(elementPattern(config.rowTag), (row) => {
       const currentRow = rowIndex++;
+      const rowCells = findElements(row, config.cellTag);
       let cellIndex = 0;
       return row.replace(elementPattern(config.cellTag), (cell) => {
         const currentCell = cellIndex++;
         const id = `s${sectionIndex}-t${currentTable}-r${currentRow}-c${currentCell}`;
         if (!(id in values)) return cell;
-        const updated = replaceCellText(cell, config.textTag, values[id] || '');
+        // HWPX 양식에는 입력 예시가 빨간 글씨로 작성된 경우가 많다.
+        // 항목명 셀의 글자 모양을 가져와 결과값에는 일반 항목 글자 모양을 적용한다.
+        const sourceStyle = config.format === 'hwpx' ? getHwpRunStyle(rowCells[currentCell - 1]) : undefined;
+        const updated = replaceCellText(cell, config.textTag, values[id] || '', config.format, sourceStyle);
         if (updated !== cell) filled.add(id);
         return updated;
       });
@@ -191,14 +195,33 @@ function fillMarkers(xml: string, values: Record<string, string>, filled: Set<st
   });
 }
 
-function replaceCellText(cell: string, textTag: string, value: string) {
+function replaceCellText(cell: string, textTag: string, value: string, format: TemplateFormat, sourceStyle?: string) {
   const pattern = new RegExp(`(<${escapeRegExp(textTag)}\\b[^>]*>)([\\s\\S]*?)(</${escapeRegExp(textTag)}>)`, 'g');
   let replaced = false;
   const escaped = escapeXml(value).replace(/\r?\n/g, ' ');
-  return cell.replace(pattern, (_match, open, _old, close) => {
+  let updated = cell.replace(pattern, (_match, open, _old, close) => {
     if (replaced) return `${open}${close}`;
     replaced = true;
     return `${open}${escaped}${close}`;
+  });
+  if (format === 'hwpx' && sourceStyle && replaced) updated = applyHwpRunStyle(updated, sourceStyle);
+  return updated;
+}
+
+function getHwpRunStyle(cell: string | undefined) {
+  if (!cell) return undefined;
+  return cell.match(/<hp:run\\b[^>]*\\bcharPrIDRef="([^"]+)"/i)?.[1];
+}
+
+function applyHwpRunStyle(cell: string, charPrIDRef: string) {
+  let applied = false;
+  return cell.replace(/<hp:run\\b([^>]*)>/gi, (run, attributes) => {
+    if (applied) return run;
+    applied = true;
+    if (/\\bcharPrIDRef="[^"]*"/i.test(attributes)) {
+      return `<hp:run${attributes.replace(/\\bcharPrIDRef="[^"]*"/i, `charPrIDRef="${charPrIDRef}"`)}>`;
+    }
+    return `<hp:run charPrIDRef="${charPrIDRef}"${attributes}>`;
   });
 }
 
