@@ -32,8 +32,8 @@ export default function VillageSetupPage() {
   useEffect(() => {
     if (queryText.trim().length < 2 || !isFirebaseConfigured) { setResults([]); return; }
     const timer = window.setTimeout(async () => {
-      try { setResults(await searchVillages(queryText)); }
-      catch { setError('마을 검색 중 오류가 발생했습니다.'); }
+      try { setResults(await searchVillages(queryText)); setError(''); }
+      catch { setResults([]); }
     }, 250);
     return () => window.clearTimeout(timer);
   }, [queryText]);

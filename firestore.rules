@@ -27,12 +27,12 @@ service cloud.firestore {
     }
 
     match /villages/{villageId} {
-      allow read: if resource.data.settings.isPublic == true || memberOf(villageId) || isSiteAdmin();
+      allow get: if resource.data.settings.isPublic == true || memberOf(villageId) || isSiteAdmin();
+      allow list: if signedIn();
       allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
       allow update: if adminOf(villageId) || isSiteAdmin()
         || (signedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount']));
       allow delete: if signedIn() && (resource.data.createdBy == request.auth.uid || isSiteAdmin());
-      allow list: if isSiteAdmin();
 
       match /members/{uid} {
         allow read: if memberOf(villageId) || request.auth.uid == uid;
