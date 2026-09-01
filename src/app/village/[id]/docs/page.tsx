@@ -30,13 +30,18 @@ export default function AITaskListPage({ params }: { params: { id: string } }) {
   const [filter, setFilter] = useState<'all' | AITaskType>('all');
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoadError('');
     const unsubscribe = subscribeAITasks(id, filter === 'all' ? undefined : filter, (nextTasks) => {
       setTasks(nextTasks);
       setLoading(false);
-    }, () => setLoading(false));
+    }, () => {
+      setLoadError('AI 업무 목록을 불러오지 못했습니다. Firebase 권한과 색인 배포 상태를 확인해주세요.');
+      setLoading(false);
+    });
     return unsubscribe;
   }, [id, filter]);
 
@@ -62,6 +67,8 @@ export default function AITaskListPage({ params }: { params: { id: string } }) {
           </div>
           <h1 className="text-xl font-bold">AI 업무 목록</h1>
         </div>
+
+        {loadError && <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{loadError}</div>}
 
         {/* Filters */}
         <div className="flex flex-wrap gap-2 mb-4">
@@ -159,6 +166,8 @@ export default function AITaskListPage({ params }: { params: { id: string } }) {
                               <ReceiptTable rows={task.outputData as ReceiptRow[]} />
                             ) : task.type === 'narration' && getAudioUrl(task.outputData) ? (
                               <div className="space-y-2"><audio controls src={getAudioUrl(task.outputData)} className="w-full" /><p className="text-xs text-[var(--color-text-secondary)]">저장된 MP3 결과물</p></div>
+                            ) : task.type === 'format' && getOutputFile(task.outputData).url ? (
+                              <div className="space-y-3"><a href={getOutputFile(task.outputData).url} download={getOutputFile(task.outputData).name} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-bold">다운로드: {getOutputFile(task.outputData).name}</a><p className="text-sm whitespace-pre-wrap">{task.outputText}</p></div>
                             ) : task.outputText ? (
                               <p className="text-sm whitespace-pre-wrap">{task.outputText}</p>
                             ) : (
@@ -183,6 +192,12 @@ function getAudioUrl(outputData: unknown) {
   if (!outputData || typeof outputData !== 'object' || !('audioUrl' in outputData)) return '';
   const audioUrl = (outputData as { audioUrl?: unknown }).audioUrl;
   return typeof audioUrl === 'string' ? audioUrl : '';
+}
+
+function getOutputFile(outputData: unknown) {
+  if (!outputData || typeof outputData !== 'object') return { url: '', name: '' };
+  const data = outputData as { fileUrl?: unknown; fileName?: unknown };
+  return { url: typeof data.fileUrl === 'string' ? data.fileUrl : '', name: typeof data.fileName === 'string' ? data.fileName : '작성된 양식' };
 }
 
 function ReceiptTable({ rows }: { rows: ReceiptRow[] }) {

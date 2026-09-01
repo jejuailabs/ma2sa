@@ -403,16 +403,14 @@ export default function AnnouncementPage({ params }: { params: { id: string } })
 
               {detailOpen && (
                 <div className="border-t border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-6">
-                  <ForwardedAnalysisDocument ref={documentRef} summary={summary} sections={sections} />
+                  <ForwardedAnalysisDocument summary={summary} sections={sections} />
                 </div>
               )}
             </section>
 
-            {!detailOpen && (
-              <div className="absolute -left-[9999px] top-0 w-[794px]" aria-hidden="true">
-                <ForwardedAnalysisDocument ref={documentRef} summary={summary} sections={sections} />
-              </div>
-            )}
+            <div className="absolute -left-[9999px] top-0 w-[794px]" aria-hidden="true">
+              <ForwardedAnnouncementPdfDocument ref={documentRef} summary={summary} sections={sections} />
+            </div>
           </div>
         )}
       </div>
@@ -468,6 +466,30 @@ const AnalysisDocument = ({ summary, sections }: { summary: AnnouncementSummary;
 );
 
 const ForwardedAnalysisDocument = React.forwardRef(AnalysisDocument);
+
+const AnnouncementPdfDocument = ({ summary, sections }: { summary: AnnouncementSummary; sections: ReturnType<typeof splitSections> }, ref: React.ForwardedRef<HTMLDivElement>) => (
+  <div ref={ref} className="bg-white p-8" style={{ fontFamily: 'Arial, "Malgun Gothic", sans-serif' }}>
+    <section className="mb-6 border border-emerald-100 rounded-xl p-5 text-slate-800">
+      <p className="text-xs font-bold text-emerald-700 mb-1">공모사업 분석</p>
+      <h2 className="text-xl font-bold mb-4">핵심 요약 대시보드</h2>
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <PdfFact label="신청 기간" value={summary.applicationPeriod} />
+        <PdfFact label="지원 대상" value={summary.target} />
+        <PdfFact label="지원 내용 / 금액" value={summary.support} />
+        <PdfFact label="제출 서류" value={summary.documents} />
+        <PdfFact label="문의처" value={summary.contact} />
+        <PdfFact label="유의사항" value={summary.cautions[0] || EMPTY_VALUE} />
+      </div>
+    </section>
+    <AnalysisDocument summary={summary} sections={sections} />
+  </div>
+);
+
+function PdfFact({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-lg bg-emerald-50 p-3"><p className="text-xs font-bold text-emerald-700 mb-1">{label}</p><p className="leading-5 text-slate-800">{value}</p></div>;
+}
+
+const ForwardedAnnouncementPdfDocument = React.forwardRef(AnnouncementPdfDocument);
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve) => {
