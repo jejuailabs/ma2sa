@@ -7,10 +7,12 @@ import { AccessGuard } from '@/components/auth/AccessGuard';
 import { BottomTabBar } from '@/components/common/BottomTabBar';
 
 const VOICES = [
-  { value: 'ko-KR-Wavenet-A', label: '여성 1 (차분한 목소리)' },
-  { value: 'ko-KR-Wavenet-B', label: '여성 2 (밝은 목소리)' },
-  { value: 'ko-KR-Wavenet-C', label: '남성 1 (낮은 목소리)' },
-  { value: 'ko-KR-Wavenet-D', label: '남성 2 (또렷한 목소리)' },
+  { value: 'alloy', label: '중성 (또렷한 목소리)' },
+  { value: 'echo', label: '남성 (낮은 목소리)' },
+  { value: 'fable', label: '남성 (부드러운 목소리)' },
+  { value: 'onyx', label: '남성 (깊은 목소리)' },
+  { value: 'nova', label: '여성 (밝은 목소리)' },
+  { value: 'shimmer', label: '여성 (차분한 목소리)' },
 ];
 
 const PRESETS = [
@@ -23,7 +25,7 @@ export default function NarrationPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const audioRef = useRef<HTMLAudioElement>(null);
   const [text, setText] = useState('');
-  const [voice, setVoice] = useState('ko-KR-Wavenet-A');
+  const [voice, setVoice] = useState('nova');
   const [speed, setSpeed] = useState(0.9);
   const [audioUrl, setAudioUrl] = useState('');
   const [loading, setLoading] = useState(false);
