@@ -112,6 +112,7 @@ export default function FormatPage({ params }: { params: { id: string } }) {
     setError('');
     setOutputFile(null);
     let taskId = '';
+    let storedTemplateData: { templateUrl: string; templateName: string } | null = null;
     try {
       try {
         taskId = await saveAITask(id, {
@@ -119,13 +120,30 @@ export default function FormatPage({ params }: { params: { id: string } }) {
           inputText: sourceText, inputImages: [], outputText: '', outputData: null,
           createdBy: user?.uid || '', status: 'processing', stage: '양식 변환 중...', errorMessage: '',
         });
+        // 나중에 결과 파일을 다시 확인하거나 복원할 수 있도록 원본 양식도 작업 기록에 보관한다.
+        const templateUrl = await uploadFile(
+          `villages/${id}/aiTasks/${taskId}/template-${templateFile.name}`,
+          templateFile,
+        );
+        storedTemplateData = { templateUrl, templateName: templateFile.name };
+        await updateAITask(id, taskId, {
+          outputData: storedTemplateData,
+          stage: '원본 양식 저장 완료 · 양식 변환 중...',
+        });
         const imageFiles = [sourceFile].filter((candidate): candidate is File => Boolean(candidate?.type.startsWith('image/')));
         if (taskId && imageFiles.length) {
           void Promise.all(imageFiles.map((image, index) => uploadFile(`villages/${id}/aiTasks/${taskId}/input-${index}-${image.name}`, image)))
             .then((inputImages) => updateAITask(id, taskId, { inputImages }))
             .catch(() => {});
         }
-      } catch {}
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : '작업 기록 또는 원본 양식을 저장하지 못했습니다.';
+        if (taskId) {
+          try { await updateAITask(id, taskId, { status: 'failed', stage: '원본 양식 저장 실패', errorMessage: message }); } catch {}
+        }
+        setError(`결과물을 다시 내려받을 수 있도록 원본 양식 저장이 필요합니다. ${message}`);
+        return;
+      }
       const messages: Array<{ role: 'user'; content: string | Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }> }> = [];
 
       const contentParts: Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }> = [];
@@ -197,13 +215,19 @@ export default function FormatPage({ params }: { params: { id: string } }) {
       const resultText = templateFields.map((field) => `- ${field.label}: ${values[field.id] || '(비워 둠)'}`).join('\n');
       setOutputFile(output);
       setResult(resultText);
-      try {
-        let fileUrl = '';
-        if (taskId) {
-          try { fileUrl = await uploadFile(`villages/${id}/aiTasks/${taskId}/${outputName}`, new File([fileBlob], outputName, { type: fileBlob.type || 'application/octet-stream' })); } catch {}
-          await updateAITask(id, taskId, { outputText: resultText, outputData: { fileUrl, fileName: outputName, mimeType: fileBlob.type }, status: 'completed', stage: '원본 양식 채우기 완료', errorMessage: '' });
-        }
-      } catch {}
+      if (taskId) {
+        const fileUrl = await uploadFile(
+          `villages/${id}/aiTasks/${taskId}/${outputName}`,
+          new File([fileBlob], outputName, { type: fileBlob.type || 'application/octet-stream' }),
+        );
+        await updateAITask(id, taskId, {
+          outputText: resultText,
+          outputData: { ...storedTemplateData, fileUrl, fileName: outputName, mimeType: fileBlob.type },
+          status: 'completed',
+          stage: '원본 양식 채우기 및 결과 파일 저장 완료',
+          errorMessage: '',
+        });
+      }
     } catch (e) {
       const message = e instanceof Error ? e.message : '변환에 실패했습니다.';
       setError(message);

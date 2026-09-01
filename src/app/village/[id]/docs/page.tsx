@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { FileText, Receipt, Mic, Volume2, FileSearch, ClipboardList, Search, Loader2, Trash2, ChevronDown, ChevronUp, AlertCircle, Clock3, CheckCircle2, Download } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { subscribeAITasks, deleteAITask, updateAITask } from '@/lib/firebase/firestore';
-import { uploadFile } from '@/lib/firebase/storage';
+import { getFileURL, uploadFile } from '@/lib/firebase/storage';
 import type { AITask, AITaskType } from '@/types/feed';
 
 const TYPE_CONFIG: Record<AITaskType, { icon: typeof FileText; label: string; color: string; bg: string }> = {
@@ -34,6 +34,7 @@ export default function AITaskListPage({ params }: { params: { id: string } }) {
   const [loadError, setLoadError] = useState('');
   const [downloadError, setDownloadError] = useState('');
   const [restoringNarrationId, setRestoringNarrationId] = useState('');
+  const [restoringFormatId, setRestoringFormatId] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -80,6 +81,28 @@ export default function AITaskListPage({ params }: { params: { id: string } }) {
       setDownloadError(cause instanceof Error ? cause.message : 'MP3를 다시 만들지 못했습니다.');
     } finally {
       setRestoringNarrationId('');
+    }
+  };
+
+  const restoreFormatFileLink = async (task: AITask) => {
+    const file = getOutputFile(task.outputData);
+    if (!file.name || file.name === '작성된 양식') {
+      setDownloadError('이전 작업에 결과 파일명이 남아 있지 않아 파일을 찾을 수 없습니다.');
+      return;
+    }
+    setRestoringFormatId(task.id);
+    setDownloadError('');
+    try {
+      const fileUrl = await getFileURL(`villages/${id}/aiTasks/${task.id}/${file.name}`);
+      await updateAITask(id, task.id, {
+        outputData: { ...getOutputData(task.outputData), fileUrl, fileName: file.name },
+        stage: '저장된 결과 파일 연결 복원 완료',
+        errorMessage: '',
+      });
+    } catch {
+      setDownloadError('이 작업 당시 HWPX 파일 자체가 저장되지 않았습니다. 이 기록에는 입력 내용만 남아 있어 같은 원본 양식을 다시 올려야 새 HWPX를 만들 수 있습니다. 이후 작업부터는 원본과 결과 파일을 함께 저장합니다.');
+    } finally {
+      setRestoringFormatId('');
     }
   };
 
@@ -200,6 +223,8 @@ export default function AITaskListPage({ params }: { params: { id: string } }) {
                               <div className="space-y-3"><p className="text-sm whitespace-pre-wrap">{task.outputText}</p><button onClick={() => restoreNarrationFile(task)} disabled={restoringNarrationId === task.id} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{restoringNarrationId === task.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}{restoringNarrationId === task.id ? 'MP3 만드는 중...' : 'MP3 다시 만들기'}</button><p className="text-xs text-[var(--color-text-secondary)]">이전 기록에 저장된 파일이 없어 원문과 저장된 목소리·속도로 새 MP3를 만듭니다.</p></div>
                             ) : task.type === 'format' && getOutputFile(task.outputData).url ? (
                               <div className="space-y-3"><a href={getOutputFile(task.outputData).url} download={getOutputFile(task.outputData).name} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-bold">다운로드: {getOutputFile(task.outputData).name}</a><p className="text-sm whitespace-pre-wrap">{task.outputText}</p></div>
+                            ) : task.type === 'format' && getOutputFile(task.outputData).name !== '작성된 양식' ? (
+                              <div className="space-y-3"><button onClick={() => restoreFormatFileLink(task)} disabled={restoringFormatId === task.id} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{restoringFormatId === task.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}{restoringFormatId === task.id ? '저장 파일 확인 중...' : 'HWPX 결과 파일 다시 연결'}</button><p className="text-xs text-[var(--color-text-secondary)]">저장소에 남아 있는 결과 파일을 찾아 이 기록에 다시 연결합니다.</p><p className="text-sm whitespace-pre-wrap">{task.outputText}</p></div>
                             ) : task.outputText ? (
                               <div className="space-y-3"><button onClick={() => downloadTaskResult(task)} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-bold hover:border-primary"><Download className="h-3.5 w-3.5" />결과 텍스트 다운로드</button><p className="text-sm whitespace-pre-wrap">{task.outputText}</p></div>
                             ) : (
@@ -239,6 +264,10 @@ function getOutputFile(outputData: unknown) {
   if (!outputData || typeof outputData !== 'object') return { url: '', name: '' };
   const data = outputData as { fileUrl?: unknown; fileName?: unknown };
   return { url: typeof data.fileUrl === 'string' ? data.fileUrl : '', name: typeof data.fileName === 'string' ? data.fileName : '작성된 양식' };
+}
+
+function getOutputData(outputData: unknown): Record<string, unknown> {
+  return outputData && typeof outputData === 'object' ? outputData as Record<string, unknown> : {};
 }
 
 function downloadTaskResult(task: AITask) {
