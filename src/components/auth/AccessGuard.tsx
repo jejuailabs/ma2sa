@@ -4,11 +4,12 @@ import { useEffect, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { isOfficialRole } from '@/types/user';
 
 export function AccessGuard({ villageId, adminOnly = false, children }: { villageId: string; adminOnly?: boolean; children: ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const isAdmin = user?.role === 'leader' || user?.role === 'secretary';
+  const isAdmin = user?.role ? isOfficialRole(user.role) : false;
   const allowed = Boolean(user && user.villageId === villageId && (!adminOnly || isAdmin));
 
   useEffect(() => {

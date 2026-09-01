@@ -40,6 +40,9 @@ export function useAuthProvider(): AuthState {
       setFirebaseUser(fbUser);
       const profile = await getUserProfile(fbUser.uid);
       setUser(profile);
+      if (!profile?.villageId) {
+        window.location.href = '/village/setup';
+      }
     } catch (err) {
       if (err instanceof Error && err.message === 'redirect') return;
       console.error('Login failed:', err);

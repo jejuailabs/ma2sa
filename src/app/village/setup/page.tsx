@@ -2,18 +2,24 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Loader2, MapPin, Plus, Search } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, MapPin, Plus, Search, UserCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { createVillage, joinVillage, searchVillages } from '@/lib/firebase/firestore';
+import { putUserProfile } from '@/lib/firebase/firestore';
 import { isFirebaseConfigured } from '@/lib/firebase/config';
 import type { Village } from '@/types/village';
+import { OFFICIAL_ROLES, type UserRole } from '@/types/user';
+
+type Step = 'role' | 'search' | 'create';
 
 export default function VillageSetupPage() {
   const { firebaseUser, user, loading, refreshProfile } = useAuth();
   const router = useRouter();
+  const [step, setStep] = useState<Step>('role');
+  const [isOfficial, setIsOfficial] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<UserRole>('leader');
   const [queryText, setQueryText] = useState('');
   const [results, setResults] = useState<Village[]>([]);
-  const [step, setStep] = useState<'search' | 'create'>('search');
   const [form, setForm] = useState({ name: '', address: '', description: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -32,14 +38,26 @@ export default function VillageSetupPage() {
     return () => window.clearTimeout(timer);
   }, [queryText]);
 
+  const proceedToVillage = () => {
+    setStep('search');
+  };
+
   const selectVillage = async (village: Village) => {
     if (!firebaseUser) return;
     setBusy(true); setError('');
     try {
+      const role = isOfficial ? selectedRole : 'member';
       const status = await joinVillage(village.id, firebaseUser.uid);
+      if (isOfficial && isFirebaseConfigured) {
+        await putUserProfile(firebaseUser.uid, { role });
+      }
       if (status === 'pending') { setNotice('가입 요청을 보냈습니다. 관리자 승인 후 이용할 수 있습니다.'); return; }
       await refreshProfile();
-      router.push(`/village/${village.id}/feed`);
+      if (isOfficial) {
+        router.push(`/village/${village.id}`);
+      } else {
+        router.push(`/village/${village.id}/feed`);
+      }
     } catch (cause) { setError(cause instanceof Error ? cause.message : '가입하지 못했습니다.'); }
     finally { setBusy(false); }
   };
@@ -53,6 +71,9 @@ export default function VillageSetupPage() {
         photoURL: '', bannerURL: '', population: null, specialties: [], createdBy: firebaseUser.uid,
         settings: { isPublic: true, requireApproval: true, inviteOnly: false },
       }, firebaseUser.uid);
+      if (isOfficial && isFirebaseConfigured) {
+        await putUserProfile(firebaseUser.uid, { role: selectedRole });
+      }
       await refreshProfile();
       router.push(`/village/${villageId}`);
     } catch (cause) { setError(cause instanceof Error ? cause.message : '마을을 만들지 못했습니다.'); }
@@ -65,18 +86,82 @@ export default function VillageSetupPage() {
     <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold mb-2">마을 지정하기</h1>
-          <p className="text-[var(--color-text-secondary)]">소속 마을을 검색하거나 새로운 마을을 등록하세요</p>
+          <h1 className="text-2xl font-bold mb-2">
+            {step === 'role' ? '마을 가입 설정' : step === 'search' ? '마을 지정하기' : '새 마을 만들기'}
+          </h1>
+          <p className="text-[var(--color-text-secondary)]">
+            {step === 'role' ? '마을에서의 역할을 선택해주세요' : step === 'search' ? '소속 마을을 검색하거나 새로운 마을을 등록하세요' : '마을 정보를 입력해주세요'}
+          </p>
         </div>
+
         {!isFirebaseConfigured && <div className="mb-4 p-4 rounded-xl bg-yellow-50 text-yellow-800 text-sm">Firebase 환경 변수를 설정해야 마을을 저장할 수 있습니다.</div>}
         {error && <div className="mb-4 p-4 rounded-xl bg-red-50 text-error text-sm">{error}</div>}
         {notice && <div className="mb-4 p-4 rounded-xl bg-secondary-light text-secondary text-sm">{notice}</div>}
 
-        {step === 'search' ? (
+        {step === 'role' && (
+          <div className="space-y-5">
+            {/* 마을 관계자 체크 */}
+            <button
+              onClick={() => setIsOfficial(!isOfficial)}
+              className={`w-full flex items-center gap-4 p-5 rounded-xl border-2 transition-all ${
+                isOfficial
+                  ? 'border-primary bg-primary-light'
+                  : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:border-primary/50'
+              }`}
+            >
+              <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${
+                isOfficial ? 'border-primary bg-primary' : 'border-[var(--color-border)]'
+              }`}>
+                {isOfficial && <UserCheck className="w-4 h-4 text-white" />}
+              </div>
+              <div className="text-left flex-1">
+                <p className="font-semibold text-[var(--color-text)]">마을 관계자입니다</p>
+                <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">이장, 사무장, 부녀회장 등 마을 운영에 참여하시는 분</p>
+              </div>
+            </button>
+
+            {/* 직책 선택 (관계자일 때만) */}
+            {isOfficial && (
+              <div className="space-y-2 animate-fadeIn">
+                <p className="text-sm font-medium text-[var(--color-text)] px-1">직책을 선택해주세요</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {OFFICIAL_ROLES.map(({ value, label }) => (
+                    <button
+                      key={value}
+                      onClick={() => setSelectedRole(value)}
+                      className={`px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                        selectedRole === value
+                          ? 'bg-primary text-white shadow-md'
+                          : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text)] hover:border-primary'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!isOfficial && (
+              <p className="text-center text-sm text-[var(--color-text-secondary)] py-2">
+                일반 회원으로 마을 소식을 확인하고 참여할 수 있습니다
+              </p>
+            )}
+
+            <button
+              onClick={proceedToVillage}
+              className="w-full py-3.5 rounded-xl bg-primary text-white font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+            >
+              다음 <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {step === 'search' && (
           <div className="space-y-4">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-secondary)]" />
-              <input value={queryText} onChange={(event) => setQueryText(event.target.value)} placeholder="마을 이름을 입력하세요" className="w-full pl-12 pr-4 py-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl focus:outline-none focus:border-primary" autoFocus />
+              <input value={queryText} onChange={(e) => setQueryText(e.target.value)} placeholder="마을 이름을 입력하세요" className="w-full pl-12 pr-4 py-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl focus:outline-none focus:border-primary" autoFocus />
             </div>
             {queryText.length >= 2 && (
               <div className="border border-[var(--color-border)] rounded-xl overflow-hidden">
@@ -85,23 +170,41 @@ export default function VillageSetupPage() {
                     <MapPin className="w-5 h-5 text-primary" /><div className="flex-1"><p className="text-sm font-medium">{village.name}</p><p className="text-xs text-[var(--color-text-secondary)]">{village.address}</p></div><span className="text-xs text-primary font-medium">가입</span>
                   </button>
                 ))}
-                <button onClick={() => { setForm((value) => ({ ...value, name: queryText })); setStep('create'); }} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--color-surface)]">
-                  <Plus className="w-5 h-5 text-secondary" /><span className="text-sm text-secondary font-medium">“{queryText}”으로 새 마을 만들기</span>
+                <button onClick={() => { setForm((v) => ({ ...v, name: queryText })); setStep('create'); }} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--color-surface)]">
+                  <Plus className="w-5 h-5 text-secondary" /><span className="text-sm text-secondary font-medium">&ldquo;{queryText}&rdquo;(으)로 새 마을 만들기</span>
                 </button>
               </div>
             )}
+            <button onClick={() => setStep('role')} className="w-full py-3 rounded-xl border border-[var(--color-border)] flex items-center justify-center gap-2 text-sm">
+              <ArrowLeft className="w-4 h-4" /> 이전
+            </button>
           </div>
-        ) : (
+        )}
+
+        {step === 'create' && (
           <div className="space-y-5">
-            <p className="p-4 bg-secondary-light dark:bg-secondary/10 rounded-xl text-sm text-secondary">최초 등록자는 이장 권한으로 등록됩니다. 다른 관리자는 생성 후 초대할 수 있습니다.</p>
-            {([['name', '마을 이름', '금성리 마을'], ['address', '주소', '시·군·구·읍·면·리']] as const).map(([key, label, placeholder]) => <label key={key} className="block text-sm font-medium">{label}<input value={form[key]} onChange={(event) => setForm({ ...form, [key]: event.target.value })} placeholder={placeholder} className="mt-1.5 w-full px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl focus:outline-none focus:border-primary" /></label>)}
-            <label className="block text-sm font-medium">마을 소개 (선택)<textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={4} className="mt-1.5 w-full px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl resize-none focus:outline-none focus:border-primary" /></label>
+            {isOfficial && (
+              <p className="p-4 bg-secondary-light dark:bg-secondary/10 rounded-xl text-sm text-secondary">
+                최초 등록자는 {OFFICIAL_ROLES.find((r) => r.value === selectedRole)?.label ?? '관계자'} 권한으로 등록됩니다.
+              </p>
+            )}
+            {([['name', '마을 이름', '금성리 마을'], ['address', '주소', '시·군·구·읍·면·리']] as const).map(([key, label, placeholder]) => (
+              <label key={key} className="block text-sm font-medium">
+                {label}
+                <input value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} placeholder={placeholder} className="mt-1.5 w-full px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl focus:outline-none focus:border-primary" />
+              </label>
+            ))}
+            <label className="block text-sm font-medium">
+              마을 소개 (선택)
+              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4} className="mt-1.5 w-full px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl resize-none focus:outline-none focus:border-primary" />
+            </label>
             <div className="flex gap-3">
               <button onClick={() => setStep('search')} className="flex-1 py-3 rounded-xl border border-[var(--color-border)] flex items-center justify-center gap-2"><ArrowLeft className="w-4 h-4" />뒤로</button>
               <button onClick={submitCreate} disabled={busy || !isFirebaseConfigured} className="flex-1 py-3 rounded-xl bg-primary text-white flex items-center justify-center gap-2 disabled:opacity-50">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <>마을 만들기<ArrowRight className="w-4 h-4" /></>}</button>
             </div>
           </div>
         )}
+
         {user?.villageId && <button onClick={() => router.push(`/village/${user.villageId}/feed`)} className="mt-6 w-full text-sm text-[var(--color-text-secondary)]">기존 마을로 돌아가기</button>}
       </div>
     </div>

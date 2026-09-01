@@ -1,6 +1,7 @@
 'use client';
 
-import { Cloud, Sun } from 'lucide-react';
+import { Sun } from 'lucide-react';
+import { ROLE_LABELS, isOfficialRole, type UserRole } from '@/types/user';
 
 interface DashboardGreetingProps {
   userName: string;
@@ -9,8 +10,8 @@ interface DashboardGreetingProps {
 }
 
 export function DashboardGreeting({ userName, userRole, villageName }: DashboardGreetingProps) {
-  const roleLabel = userRole === 'leader' ? '이장' : userRole === 'secretary' ? '사무장' : '';
-  const displayName = roleLabel ? `${userName}${roleLabel}님` : `${userName}님`;
+  const roleLabel = isOfficialRole(userRole as UserRole) ? ROLE_LABELS[userRole as UserRole] : '';
+  const displayName = roleLabel ? `${userName} ${roleLabel}님` : `${userName}님`;
 
   return (
     <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-secondary/90 to-secondary/70 text-white p-6 sm:p-8">

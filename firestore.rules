@@ -7,13 +7,11 @@ service cloud.firestore {
     function adminOf(villageId) { return memberOf(villageId) && userData().role in ['leader', 'secretary']; }
 
     match /users/{uid} {
-      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.role == 'resident' && request.resource.data.villageId == null;
+      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.role == 'member' && request.resource.data.villageId == null;
       allow read: if signedIn() && (request.auth.uid == uid || adminOf(resource.data.villageId));
       allow update: if signedIn() && request.auth.uid == uid
         && (request.resource.data.role == resource.data.role
-          || (request.resource.data.role == 'resident')
-          || (request.resource.data.role == 'leader'
-            && getAfter(/databases/$(database)/documents/villages/$(request.resource.data.villageId)).data.createdBy == uid));
+          || request.resource.data.role in ['member', 'leader', 'secretary', 'women_leader', 'youth_leader', 'elder']);
     }
 
     match /villages/{villageId} {
@@ -25,9 +23,8 @@ service cloud.firestore {
 
       match /members/{uid} {
         allow read: if memberOf(villageId) || request.auth.uid == uid;
-        allow create: if signedIn() && request.auth.uid == uid && request.resource.data.role == 'resident'
-          || signedIn() && request.auth.uid == uid && request.resource.data.role == 'leader'
-             && getAfter(/databases/$(database)/documents/villages/$(villageId)).data.createdBy == uid;
+        allow create: if signedIn() && request.auth.uid == uid
+          && request.resource.data.role in ['member', 'leader', 'secretary', 'women_leader', 'youth_leader', 'elder'];
         allow update: if adminOf(villageId);
       }
 

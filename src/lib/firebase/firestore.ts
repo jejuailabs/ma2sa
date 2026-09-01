@@ -98,9 +98,9 @@ export async function joinVillage(villageId: string, uid: string): Promise<'acti
   if (!village.exists()) throw new Error('마을을 찾을 수 없습니다.');
   const status = village.data().settings?.requireApproval ? 'pending' : 'active';
   const batch = writeBatch(db);
-  batch.set(doc(db, 'villages', villageId, 'members', uid), { uid, role: 'resident', status, joinedAt: serverTimestamp() });
+  batch.set(doc(db, 'villages', villageId, 'members', uid), { uid, role: 'member', status, joinedAt: serverTimestamp() });
   if (status === 'active') {
-    batch.update(doc(db, 'users', uid), { villageId, role: 'resident' });
+    batch.update(doc(db, 'users', uid), { villageId, role: 'member' });
     batch.update(villageRef, { memberCount: increment(1) });
   }
   await batch.commit();

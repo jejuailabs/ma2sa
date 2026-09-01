@@ -6,6 +6,7 @@ import { Menu, X, Bell, Home } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from './ThemeToggle';
 import { Avatar } from './Avatar';
+import { isOfficialRole } from '@/types/user';
 
 const NAV_ITEMS = [
   { label: '마을 소식', href: '/#feed' },
@@ -56,7 +57,7 @@ export function Header() {
                   <Link href="/mypage" className="block px-4 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-surface)]" onClick={() => setProfileMenuOpen(false)}>
                     마이페이지
                   </Link>
-                  {(user.role === 'leader' || user.role === 'secretary') && user.villageId && (
+                  {isOfficialRole(user.role) && user.villageId && (
                     <Link href={`/village/${user.villageId}`} className="block px-4 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-surface)]" onClick={() => setProfileMenuOpen(false)}>
                       업무모드 전환
                     </Link>

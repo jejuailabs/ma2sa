@@ -25,7 +25,7 @@ async function saveUserProfile(user: FirebaseUser) {
       displayName: user.displayName ?? '',
       photoURL: user.photoURL ?? '',
       villageId: null,
-      role: 'resident',
+      role: 'member',
       createdAt: serverTimestamp(),
       lastLoginAt: serverTimestamp(),
       settings: {

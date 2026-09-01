@@ -7,13 +7,15 @@ import { Avatar } from '@/components/common/Avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { ChevronRight, Moon, Sun, Bell, LogOut, MapPin, Shield } from 'lucide-react';
+import { ROLE_LABELS, isOfficialRole } from '@/types/user';
 
 export default function MyPage() {
   const { user, logout, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
 
-  const roleLabel = user?.role === 'leader' ? '이장' : user?.role === 'secretary' ? '사무장' : '주민';
+  const showRole = user?.role && isOfficialRole(user.role);
+  const roleLabel = user?.role ? ROLE_LABELS[user.role] : '';
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
@@ -29,9 +31,11 @@ export default function MyPage() {
           {user && (
             <>
               <p className="text-sm text-[var(--color-text-secondary)]">{user.email}</p>
-              <span className="mt-2 px-3 py-1 rounded-full text-xs font-medium bg-secondary-light text-secondary">
-                {roleLabel}
-              </span>
+              {showRole && (
+                <span className="mt-2 px-3 py-1 rounded-full text-xs font-medium bg-secondary-light text-secondary">
+                  {roleLabel}
+                </span>
+              )}
             </>
           )}
         </div>
@@ -49,7 +53,7 @@ export default function MyPage() {
             </button>
           )}
 
-          {(user?.role === 'leader' || user?.role === 'secretary') && user?.villageId && (
+          {user?.role && isOfficialRole(user.role) && user?.villageId && (
             <button
               onClick={() => router.push(`/village/${user.villageId}`)}
               className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-secondary-light dark:bg-secondary/10 border border-secondary/20 hover:bg-secondary/20 transition-colors"

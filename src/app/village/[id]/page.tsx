@@ -56,7 +56,7 @@ export default function DashboardPage({ params }: { params: { id: string } }) {
           <SidebarMenu villageId={id} villageName={villageName} balance={stats.balance} />
           <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-6 max-w-5xl">
             {error && <div className="mb-4 p-3 rounded-lg bg-red-50 text-error text-sm">{error}</div>}
-            <div className="mb-6"><DashboardGreeting userName={user?.displayName || '사용자'} userRole={user?.role || 'resident'} villageName={villageName} /></div>
+            <div className="mb-6"><DashboardGreeting userName={user?.displayName || '사용자'} userRole={user?.role || 'member'} villageName={villageName} /></div>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-6">{statCards.map((stat) => <StatCard key={stat.label} {...stat} />)}</div>
             <div className="grid lg:grid-cols-2 gap-6 mb-6">
               <RecentNews posts={posts} villageId={id} />
