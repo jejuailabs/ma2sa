@@ -44,7 +44,7 @@ export function CommentSection({ villageId, postId, onCountChange }: CommentSect
       setComments((prev) => [...prev, { id, authorId: user.uid, authorName: user.displayName, authorPhotoURL: user.photoURL, content: text.trim(), createdAt: new Date() }]);
       setText('');
       onCountChange?.(1);
-    } catch { /* ignore */ }
+    } catch (e) { alert(e instanceof Error ? e.message : '댓글을 작성하지 못했습니다.'); }
     finally { setSubmitting(false); }
   };
 
