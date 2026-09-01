@@ -41,7 +41,12 @@ export async function POST(req: NextRequest) {
     if (!res.ok) {
       const err = await res.text();
       console.error('Anthropic API error:', res.status, err);
-      return NextResponse.json({ error: 'AI 응답 실패' }, { status: 502 });
+      let detail = 'AI 응답 실패';
+      try {
+        const parsed = JSON.parse(err);
+        detail = parsed?.error?.message || `API 오류 (${res.status})`;
+      } catch { detail = `API 오류 (${res.status})`; }
+      return NextResponse.json({ error: detail }, { status: 502 });
     }
 
     const data = await res.json();

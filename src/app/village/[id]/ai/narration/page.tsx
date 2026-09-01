@@ -1,16 +1,18 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Volume2, Loader2, Play, Pause, Download, RefreshCw } from 'lucide-react';
+import { Volume2, Loader2, Play, Pause, Download, RefreshCw, Square } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
 
+const SAMPLE_TEXT = '안녕하십니까, 마을 주민 여러분. 오늘 날씨가 좋습니다.';
+
 const VOICES = [
-  { value: 'alloy', label: '중성 (또렷한 목소리)' },
-  { value: 'echo', label: '남성 (낮은 목소리)' },
-  { value: 'fable', label: '남성 (부드러운 목소리)' },
-  { value: 'onyx', label: '남성 (깊은 목소리)' },
-  { value: 'nova', label: '여성 (밝은 목소리)' },
-  { value: 'shimmer', label: '여성 (차분한 목소리)' },
+  { value: 'alloy', label: '중성', desc: '또렷한 목소리', emoji: '🎙️' },
+  { value: 'echo', label: '남성 1', desc: '낮은 목소리', emoji: '🗣️' },
+  { value: 'fable', label: '남성 2', desc: '부드러운 목소리', emoji: '📢' },
+  { value: 'onyx', label: '남성 3', desc: '깊은 목소리', emoji: '🎤' },
+  { value: 'nova', label: '여성 1', desc: '밝은 목소리', emoji: '🔔' },
+  { value: 'shimmer', label: '여성 2', desc: '차분한 목소리', emoji: '🔊' },
 ];
 
 const PRESETS = [
@@ -22,6 +24,7 @@ const PRESETS = [
 export default function NarrationPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const audioRef = useRef<HTMLAudioElement>(null);
+  const previewAudioRef = useRef<HTMLAudioElement>(null);
   const [text, setText] = useState('');
   const [voice, setVoice] = useState('nova');
   const [speed, setSpeed] = useState(0.9);
@@ -30,6 +33,45 @@ export default function NarrationPage({ params }: { params: { id: string } }) {
   const [polishing, setPolishing] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState('');
+  const [previewLoading, setPreviewLoading] = useState('');
+  const [previewPlaying, setPreviewPlaying] = useState('');
+
+  const previewVoice = async (voiceId: string) => {
+    if (previewPlaying === voiceId) {
+      previewAudioRef.current?.pause();
+      setPreviewPlaying('');
+      return;
+    }
+
+    setPreviewLoading(voiceId);
+    setPreviewPlaying('');
+    try {
+      const response = await fetch('/api/ai/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: SAMPLE_TEXT, voice: voiceId, speed: 0.9 }),
+      });
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+
+      const audioBytes = atob(data.audioContent);
+      const arr = new Uint8Array(audioBytes.length);
+      for (let i = 0; i < audioBytes.length; i++) arr[i] = audioBytes.charCodeAt(i);
+      const blob = new Blob([arr], { type: 'audio/mp3' });
+      const url = URL.createObjectURL(blob);
+
+      if (previewAudioRef.current) {
+        previewAudioRef.current.src = url;
+        previewAudioRef.current.onended = () => setPreviewPlaying('');
+        await previewAudioRef.current.play();
+        setPreviewPlaying(voiceId);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '미리듣기 실패');
+    } finally {
+      setPreviewLoading('');
+    }
+  };
 
   const polishText = async () => {
     if (!text.trim()) return;
@@ -108,6 +150,7 @@ export default function NarrationPage({ params }: { params: { id: string } }) {
 
   return (
     <DashboardShell villageId={id}>
+      <audio ref={previewAudioRef} className="hidden" />
       <div className="max-w-3xl">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-9 h-9 rounded-lg bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center">
@@ -136,24 +179,54 @@ export default function NarrationPage({ params }: { params: { id: string } }) {
             <span className="text-xs text-[var(--color-text-secondary)] self-center">{text.length}/5000자</span>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4 mb-4">
-            <label className="block">
-              <span className="text-sm font-medium mb-1 block">목소리</span>
-              <select value={voice} onChange={(e) => setVoice(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-sm">
-                {VOICES.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-sm font-medium mb-1 block">속도: {speed.toFixed(1)}x</span>
-              <input type="range" min={0.5} max={1.5} step={0.1} value={speed} onChange={(e) => setSpeed(parseFloat(e.target.value))} className="w-full accent-primary" />
-              <div className="flex justify-between text-xs text-[var(--color-text-secondary)]">
-                <span>느리게</span><span>보통</span><span>빠르게</span>
-              </div>
-            </label>
+          {/* Voice Selection with Preview */}
+          <div className="mb-4">
+            <span className="text-sm font-bold mb-3 block">목소리 선택</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {VOICES.map((v) => (
+                <div
+                  key={v.value}
+                  className={`relative rounded-xl border-2 p-3 cursor-pointer transition-all ${voice === v.value ? 'border-primary bg-primary-light shadow-sm' : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:border-primary/50'}`}
+                  onClick={() => setVoice(v.value)}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-lg">{v.emoji}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); previewVoice(v.value); }}
+                      disabled={previewLoading === v.value}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${previewPlaying === v.value ? 'bg-red-500 text-white' : 'bg-primary/10 text-primary hover:bg-primary hover:text-white'}`}
+                      title="미리듣기"
+                    >
+                      {previewLoading === v.value ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : previewPlaying === v.value ? (
+                        <Square className="w-3 h-3" />
+                      ) : (
+                        <Play className="w-3.5 h-3.5 ml-0.5" />
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-sm font-bold">{v.label}</p>
+                  <p className="text-xs text-[var(--color-text-secondary)]">{v.desc}</p>
+                  {voice === v.value && (
+                    <div className="absolute top-2 left-2 w-2 h-2 rounded-full bg-primary" />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
-          <button onClick={generate} disabled={loading || !text.trim()} className="w-full py-3 rounded-xl bg-primary text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50">
-            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> 음성 생성 중...</> : '음성 생성하기'}
+          {/* Speed */}
+          <div className="mb-4">
+            <span className="text-sm font-bold mb-2 block">속도: {speed.toFixed(1)}x</span>
+            <input type="range" min={0.5} max={1.5} step={0.1} value={speed} onChange={(e) => setSpeed(parseFloat(e.target.value))} className="w-full accent-primary" />
+            <div className="flex justify-between text-xs text-[var(--color-text-secondary)]">
+              <span>느리게</span><span>보통</span><span>빠르게</span>
+            </div>
+          </div>
+
+          <button onClick={generate} disabled={loading || !text.trim()} className="w-full py-3 rounded-xl bg-primary text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50 text-base">
+            {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> 음성 생성 중...</> : '음성 생성하기'}
           </button>
         </div>
 
@@ -164,14 +237,14 @@ export default function NarrationPage({ params }: { params: { id: string } }) {
             <h3 className="font-bold mb-4">생성된 음성</h3>
             <audio ref={audioRef} src={audioUrl} onEnded={() => setPlaying(false)} />
             <div className="flex items-center gap-3">
-              <button onClick={togglePlay} className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center hover:opacity-90">
-                {playing ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+              <button onClick={togglePlay} className="w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center hover:opacity-90">
+                {playing ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-0.5" />}
               </button>
               <div className="flex-1">
-                <p className="text-sm font-medium">마을 방송 음성</p>
-                <p className="text-xs text-[var(--color-text-secondary)]">{VOICES.find((v) => v.value === voice)?.label} · {speed}x</p>
+                <p className="text-sm font-bold">마을 방송 음성</p>
+                <p className="text-xs text-[var(--color-text-secondary)]">{VOICES.find((v) => v.value === voice)?.label} ({VOICES.find((v) => v.value === voice)?.desc}) · {speed}x</p>
               </div>
-              <button onClick={downloadAudio} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90">
+              <button onClick={downloadAudio} className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-bold hover:opacity-90">
                 <Download className="w-4 h-4" /> MP3 저장
               </button>
             </div>

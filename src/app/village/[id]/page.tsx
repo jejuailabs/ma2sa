@@ -13,6 +13,7 @@ import { RecentNews } from '@/components/dashboard/RecentNews';
 import { TodoList } from '@/components/dashboard/TodoList';
 import { AIFeatureButton } from '@/components/dashboard/AIFeatureButton';
 import { PhotoGrid } from '@/components/dashboard/PhotoGrid';
+import { MiniCalendar } from '@/components/dashboard/MiniCalendar';
 import { getDashboardData, getVillage } from '@/lib/firebase/firestore';
 import { isFirebaseConfigured } from '@/lib/firebase/config';
 import { formatCurrency } from '@/lib/utils';
@@ -86,6 +87,8 @@ export default function DashboardPage({ params }: { params: { id: string } }) {
 
             {/* Right sidebar */}
             <aside className="hidden xl:block w-72 shrink-0 space-y-4">
+              <MiniCalendar villageId={id} />
+
               <TodoList initialTodos={[]} villageId={id} userId={user?.uid} />
 
               {/* Budget card */}
