@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import { Mic, Loader2, Copy, Check, Download, Upload, Play, Pause } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
-import { saveAITask } from '@/lib/firebase/firestore';
+import { saveAITask, updateAITask } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function TranscribePage({ params }: { params: { id: string } }) {
@@ -11,6 +11,7 @@ export default function TranscribePage({ params }: { params: { id: string } }) {
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const taskIdRef = useRef('');
 
   const [file, setFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState('');
@@ -23,7 +24,25 @@ export default function TranscribePage({ params }: { params: { id: string } }) {
   const [copiedRaw, setCopiedRaw] = useState(false);
   const [copiedResult, setCopiedResult] = useState(false);
 
+  const startTask = async (inputText: string, status: 'draft' | 'processing', stage: string) => {
+    try {
+      if (taskIdRef.current) {
+        await updateAITask(id, taskIdRef.current, { inputText, status, stage, errorMessage: '' });
+        return taskIdRef.current;
+      }
+      const taskId = await saveAITask(id, {
+        type: 'transcribe', title: `회의록 정리${file ? ` (${file.name})` : ''}`, inputText, inputImages: [], outputText: '', outputData: null,
+        createdBy: user?.uid || '', status, stage, errorMessage: '',
+      });
+      taskIdRef.current = taskId;
+      return taskId;
+    } catch {
+      return '';
+    }
+  };
+
   const handleFile = (f: File) => {
+    taskIdRef.current = '';
     setFile(f);
     setError('');
     setTranscript('');
@@ -32,6 +51,7 @@ export default function TranscribePage({ params }: { params: { id: string } }) {
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioUrl(URL.createObjectURL(f));
     setPlaying(false);
+    void startTask(`첨부 음성 파일: ${f.name}`, 'draft', '음성 인식 대기');
   };
 
   const togglePlay = () => {
@@ -45,6 +65,7 @@ export default function TranscribePage({ params }: { params: { id: string } }) {
     setError('');
     setStep('transcribing');
     try {
+      const taskId = await startTask(`첨부 음성 파일: ${file.name}`, 'processing', '음성을 텍스트로 변환 중...');
       const formData = new FormData();
       formData.append('file', file);
       const res = await fetch('/api/ai/stt', { method: 'POST', body: formData });
@@ -53,15 +74,20 @@ export default function TranscribePage({ params }: { params: { id: string } }) {
       if (!data.text?.trim()) throw new Error('음성에서 텍스트를 추출할 수 없었습니다. 다른 파일을 시도해주세요.');
       setTranscript(data.text);
       setStep('transcript');
+      try { await updateAITask(id, taskId, { inputText: data.text, status: 'draft', stage: '원문 텍스트 추출 완료 - 회의록 정리 대기' }); } catch {}
     } catch (e) {
-      setError(e instanceof Error ? e.message : '음성 인식에 실패했습니다.');
+      const message = e instanceof Error ? e.message : '음성 인식에 실패했습니다.';
+      setError(message);
+      try { if (taskIdRef.current) await updateAITask(id, taskIdRef.current, { status: 'failed', stage: '음성 인식 실패', errorMessage: message }); } catch {}
       setStep('upload');
     }
   };
 
   const directInput = () => {
+    taskIdRef.current = '';
     setTranscript('');
     setStep('transcript');
+    void startTask('', 'draft', '회의 내용 입력 중');
   };
 
   const generateSummary = async () => {
@@ -69,6 +95,7 @@ export default function TranscribePage({ params }: { params: { id: string } }) {
     setError('');
     setStep('summarizing');
     try {
+      const taskId = await startTask(transcript, 'processing', '회의록 정리 중...');
       const response = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -120,18 +147,12 @@ export default function TranscribePage({ params }: { params: { id: string } }) {
       setSummary(data.text);
       setStep('result');
       try {
-        await saveAITask(id, {
-          type: 'transcribe',
-          title: `회의록 정리${file ? ` (${file.name})` : ''}`,
-          inputText: transcript,
-          inputImages: [],
-          outputText: data.text,
-          outputData: null,
-          createdBy: user?.uid || '',
-        });
+        await updateAITask(id, taskId, { inputText: transcript, outputText: data.text, outputData: null, status: 'completed', stage: '회의록 정리 완료', errorMessage: '' });
       } catch {}
     } catch (e) {
-      setError(e instanceof Error ? e.message : '정리에 실패했습니다.');
+      const message = e instanceof Error ? e.message : '정리에 실패했습니다.';
+      setError(message);
+      try { if (taskIdRef.current) await updateAITask(id, taskIdRef.current, { status: 'failed', stage: '회의록 정리 실패', errorMessage: message }); } catch {}
       setStep('transcript');
     }
   };

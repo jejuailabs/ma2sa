@@ -3,7 +3,8 @@
 import { useState, useRef } from 'react';
 import { Receipt, ImagePlus, Loader2, Download, Plus, Trash2 } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
-import { saveAITask } from '@/lib/firebase/firestore';
+import { saveAITask, updateAITask } from '@/lib/firebase/firestore';
+import { uploadFile } from '@/lib/firebase/storage';
 import { useAuth } from '@/hooks/useAuth';
 
 interface ReceiptRow {
@@ -39,7 +40,18 @@ export default function ReceiptPage({ params }: { params: { id: string } }) {
     if (files.length === 0) return;
     setLoading(true);
     setError('');
+    let taskId = '';
     try {
+      try {
+        taskId = await saveAITask(id, {
+          type: 'receipt', title: `영수증 분석 (${files.length}장)`, inputText: `첨부 영수증 ${files.length}장`,
+          inputImages: [], outputText: '', outputData: null, createdBy: user?.uid || '',
+          status: 'processing', stage: `영수증 ${files.length}장 분석 중...`, errorMessage: '',
+        });
+        void Promise.all(files.map((entry, index) => uploadFile(`villages/${id}/aiTasks/${taskId}/receipt-${index}-${entry.file.name}`, entry.file)))
+          .then((inputImages) => updateAITask(id, taskId, { inputImages }))
+          .catch(() => {});
+      } catch {}
       const allRows: ReceiptRow[] = [];
       for (const { file } of files) {
         const base64 = await new Promise<string>((res) => {
@@ -90,10 +102,12 @@ export default function ReceiptPage({ params }: { params: { id: string } }) {
       setRows(allRows);
       setTotalAmount(allRows.reduce((sum, r) => sum + (parseInt(r.amount) || 0), 0));
       try {
-        await saveAITask(id, { type: 'receipt', title: `영수증 분석 (${files.length}장, ${allRows.length}건)`, inputText: '', inputImages: files.map((f) => f.preview), outputText: '', outputData: allRows, createdBy: user?.uid || '' });
+        if (taskId) await updateAITask(id, taskId, { title: `영수증 분석 (${files.length}장, ${allRows.length}건)`, outputData: allRows, status: 'completed', stage: '분석 완료', errorMessage: '' });
       } catch {}
     } catch (e) {
-      setError(e instanceof Error ? e.message : '분석에 실패했습니다.');
+      const message = e instanceof Error ? e.message : '분석에 실패했습니다.';
+      setError(message);
+      try { if (taskId) await updateAITask(id, taskId, { status: 'failed', stage: '분석 실패', errorMessage: message }); } catch {}
     } finally {
       setLoading(false);
     }

@@ -79,6 +79,7 @@ export interface DashboardStats {
 }
 
 export type AITaskType = 'announcement' | 'receipt' | 'format' | 'transcribe' | 'narration';
+export type AITaskStatus = 'draft' | 'processing' | 'completed' | 'failed';
 
 export interface AITask {
   id: string;
@@ -91,4 +92,8 @@ export interface AITask {
   outputData: unknown;
   createdBy: string;
   createdAt: Date;
+  status?: AITaskStatus;
+  stage?: string;
+  errorMessage?: string;
+  updatedAt?: Date;
 }

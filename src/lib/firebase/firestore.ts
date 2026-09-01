@@ -204,8 +204,13 @@ export async function saveAIResultAsDocument(villageId: string, uid: string, dat
 
 export async function saveAITask(villageId: string, data: Omit<AITask, 'id' | 'villageId' | 'createdAt'>): Promise<string> {
   if (!db) throw new Error('Firebase가 설정되지 않았습니다.');
-  const ref = await addDoc(collection(db, 'villages', villageId, 'aiTasks'), { ...data, villageId, createdAt: serverTimestamp() });
+  const ref = await addDoc(collection(db, 'villages', villageId, 'aiTasks'), { ...data, villageId, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
   return ref.id;
+}
+
+export async function updateAITask(villageId: string, taskId: string, data: Partial<Omit<AITask, 'id' | 'villageId' | 'createdAt' | 'updatedAt'>>) {
+  if (!db) throw new Error('Firebase가 설정되지 않았습니다.');
+  await updateDoc(doc(db, 'villages', villageId, 'aiTasks', taskId), { ...data, updatedAt: serverTimestamp() });
 }
 
 export async function listAITasks(villageId: string, type?: AITaskType): Promise<AITask[]> {
@@ -215,8 +220,23 @@ export async function listAITasks(villageId: string, type?: AITaskType): Promise
   const snapshot = await getDocs(query(collection(db, 'villages', villageId, 'aiTasks'), ...constraints));
   return snapshot.docs.map((d) => {
     const data = d.data();
-    return { ...data, id: d.id, createdAt: asDate(data.createdAt) } as AITask;
+    return { ...data, id: d.id, createdAt: asDate(data.createdAt), updatedAt: data.updatedAt ? asDate(data.updatedAt) : undefined } as AITask;
   });
+}
+
+export function subscribeAITasks(villageId: string, type: AITaskType | undefined, callback: (tasks: AITask[]) => void, onError?: () => void): Unsubscribe {
+  if (!db) {
+    callback([]);
+    return () => {};
+  }
+  const constraints: QueryConstraint[] = [orderBy('createdAt', 'desc'), limit(50)];
+  if (type) constraints.unshift(where('type', '==', type));
+  return onSnapshot(query(collection(db, 'villages', villageId, 'aiTasks'), ...constraints), (snapshot) => {
+    callback(snapshot.docs.map((d) => {
+      const data = d.data();
+      return { ...data, id: d.id, createdAt: asDate(data.createdAt), updatedAt: data.updatedAt ? asDate(data.updatedAt) : undefined } as AITask;
+    }));
+  }, onError);
 }
 
 export async function deleteAITask(villageId: string, taskId: string) {

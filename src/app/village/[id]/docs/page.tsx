@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { FileText, Receipt, Mic, Volume2, FileSearch, ClipboardList, Search, Loader2, Trash2, ChevronDown, ChevronUp, Eye } from 'lucide-react';
+import { FileText, Receipt, Mic, Volume2, FileSearch, ClipboardList, Search, Loader2, Trash2, ChevronDown, ChevronUp, AlertCircle, Clock3, CheckCircle2 } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
-import { listAITasks, deleteAITask } from '@/lib/firebase/firestore';
+import { subscribeAITasks, deleteAITask } from '@/lib/firebase/firestore';
 import type { AITask, AITaskType } from '@/types/feed';
 
 const TYPE_CONFIG: Record<AITaskType, { icon: typeof FileText; label: string; color: string; bg: string }> = {
@@ -17,6 +17,13 @@ const TYPE_CONFIG: Record<AITaskType, { icon: typeof FileText; label: string; co
 
 interface ReceiptRow { date: string; item: string; quantity: string; unitPrice: string; amount: string; store: string; category: string; note: string }
 
+const STATUS_CONFIG = {
+  draft: { label: '중간 저장', className: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300', icon: Clock3 },
+  processing: { label: '처리 중', className: 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300', icon: Loader2 },
+  completed: { label: '완료', className: 'bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-300', icon: CheckCircle2 },
+  failed: { label: '실패', className: 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300', icon: AlertCircle },
+};
+
 export default function AITaskListPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const [tasks, setTasks] = useState<AITask[]>([]);
@@ -26,10 +33,11 @@ export default function AITaskListPage({ params }: { params: { id: string } }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
-    listAITasks(id, filter === 'all' ? undefined : filter)
-      .then(setTasks)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const unsubscribe = subscribeAITasks(id, filter === 'all' ? undefined : filter, (nextTasks) => {
+      setTasks(nextTasks);
+      setLoading(false);
+    }, () => setLoading(false));
+    return unsubscribe;
   }, [id, filter]);
 
   const handleDelete = async (taskId: string) => {
@@ -87,6 +95,8 @@ export default function AITaskListPage({ params }: { params: { id: string } }) {
               const cfg = TYPE_CONFIG[task.type];
               const Icon = cfg.icon;
               const isExpanded = expandedId === task.id;
+              const status = STATUS_CONFIG[task.status || 'completed'];
+              const StatusIcon = status.icon;
 
               return (
                 <div key={task.id} className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl overflow-hidden">
@@ -101,8 +111,12 @@ export default function AITaskListPage({ params }: { params: { id: string } }) {
                         <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${cfg.bg} ${cfg.color}`}>{cfg.label}</span>
                         <span className="ml-2">{task.createdAt.toLocaleString('ko-KR')}</span>
                       </p>
+                      <p className="text-xs text-[var(--color-text-secondary)] mt-1 truncate">{task.stage || '결과 저장 완료'}</p>
                     </div>
                     <div className="flex items-center gap-2">
+                      <span className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold ${status.className}`}>
+                        <StatusIcon className={`w-3 h-3 ${task.status === 'processing' ? 'animate-spin' : ''}`} /> {status.label}
+                      </span>
                       <button onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }} className="p-1.5 rounded-lg text-[var(--color-text-secondary)] hover:text-error hover:bg-error/10" title="삭제">
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -113,6 +127,10 @@ export default function AITaskListPage({ params }: { params: { id: string } }) {
                   {/* Expanded content */}
                   {isExpanded && (
                     <div className="px-4 pb-4 border-t border-[var(--color-border)]">
+                      <div className={`mt-4 flex items-start gap-2 rounded-lg px-3 py-2 text-xs ${status.className}`}>
+                        <StatusIcon className={`w-4 h-4 shrink-0 mt-0.5 ${task.status === 'processing' ? 'animate-spin' : ''}`} />
+                        <div><span className="font-bold">{status.label}</span><span className="ml-2">{task.stage || '결과 저장 완료'}</span>{task.errorMessage && <p className="mt-1 text-red-600">{task.errorMessage}</p>}</div>
+                      </div>
                       <div className="grid md:grid-cols-2 gap-4 mt-4">
                         {/* Input */}
                         <div>
@@ -139,10 +157,12 @@ export default function AITaskListPage({ params }: { params: { id: string } }) {
                           <div className="bg-[var(--color-surface)] rounded-xl p-4 max-h-64 overflow-auto">
                             {task.type === 'receipt' && task.outputData ? (
                               <ReceiptTable rows={task.outputData as ReceiptRow[]} />
+                            ) : task.type === 'narration' && getAudioUrl(task.outputData) ? (
+                              <div className="space-y-2"><audio controls src={getAudioUrl(task.outputData)} className="w-full" /><p className="text-xs text-[var(--color-text-secondary)]">저장된 MP3 결과물</p></div>
                             ) : task.outputText ? (
                               <p className="text-sm whitespace-pre-wrap">{task.outputText}</p>
                             ) : (
-                              <p className="text-sm text-[var(--color-text-secondary)]">(결과 없음)</p>
+                              <p className="text-sm text-[var(--color-text-secondary)]">{task.status === 'processing' ? '(AI가 결과를 만드는 중입니다)' : '(결과 없음)'}</p>
                             )}
                           </div>
                         </div>
@@ -157,6 +177,12 @@ export default function AITaskListPage({ params }: { params: { id: string } }) {
       </div>
     </DashboardShell>
   );
+}
+
+function getAudioUrl(outputData: unknown) {
+  if (!outputData || typeof outputData !== 'object' || !('audioUrl' in outputData)) return '';
+  const audioUrl = (outputData as { audioUrl?: unknown }).audioUrl;
+  return typeof audioUrl === 'string' ? audioUrl : '';
 }
 
 function ReceiptTable({ rows }: { rows: ReceiptRow[] }) {

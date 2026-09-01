@@ -3,7 +3,8 @@
 import React, { useState, useRef } from 'react';
 import { FileSearch, Upload, Loader2, Copy, Check, FileText, AlertCircle, CalendarDays, Users, HandCoins, ClipboardList, Phone, TriangleAlert, ChevronDown, Download } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
-import { saveAITask } from '@/lib/firebase/firestore';
+import { saveAITask, updateAITask } from '@/lib/firebase/firestore';
+import { uploadFile } from '@/lib/firebase/storage';
 import { useAuth } from '@/hooks/useAuth';
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -170,7 +171,20 @@ export default function AnnouncementPage({ params }: { params: { id: string } })
     if (!file && !textInput.trim()) { setError('분석할 내용을 입력하거나 파일을 첨부해주세요.'); return; }
     setLoading(true);
     setError('');
+    let taskId = '';
     try {
+      try {
+        taskId = await saveAITask(id, {
+          type: 'announcement', title: `공고문 분석 - ${file?.name || '텍스트 입력'}`, inputText: textInput,
+          inputImages: [], outputText: '', outputData: null, createdBy: user?.uid || '',
+          status: 'processing', stage: '공고문 분석 중...', errorMessage: '',
+        });
+        if (file && IMAGE_TYPES.includes(file.type)) {
+          void uploadFile(`villages/${id}/aiTasks/${taskId}/input-${file.name}`, file)
+            .then((url) => updateAITask(id, taskId, { inputImages: [url] }))
+            .catch(() => {});
+        }
+      } catch {}
       const contentParts: Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }> = [];
 
       if (file) {
@@ -233,10 +247,12 @@ export default function AnnouncementPage({ params }: { params: { id: string } })
       setResult(data.text);
       setDetailOpen(false);
       try {
-        await saveAITask(id, { type: 'announcement', title: `공고문 분석 - ${file?.name || '텍스트 입력'}`, inputText: textInput, inputImages: preview ? [preview] : [], outputText: data.text, outputData: null, createdBy: user?.uid || '' });
+        if (taskId) await updateAITask(id, taskId, { outputText: data.text, outputData: null, status: 'completed', stage: '분석 완료', errorMessage: '' });
       } catch {}
     } catch (e) {
-      setError(e instanceof Error ? e.message : '분석에 실패했습니다.');
+      const message = e instanceof Error ? e.message : '분석에 실패했습니다.';
+      setError(message);
+      try { if (taskId) await updateAITask(id, taskId, { status: 'failed', stage: '분석 실패', errorMessage: message }); } catch {}
     } finally {
       setLoading(false);
     }

@@ -3,7 +3,8 @@
 import { useState, useRef } from 'react';
 import { FileText, Loader2, Copy, Check, Download, Upload, Eye, X, ImagePlus, FileUp } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
-import { saveAITask } from '@/lib/firebase/firestore';
+import { saveAITask, updateAITask } from '@/lib/firebase/firestore';
+import { uploadFile } from '@/lib/firebase/storage';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function FormatPage({ params }: { params: { id: string } }) {
@@ -65,7 +66,21 @@ export default function FormatPage({ params }: { params: { id: string } }) {
     if (!templateFile && !templateText.trim()) { setError('변환할 양식 파일을 업로드해주세요.'); return; }
     setLoading(true);
     setError('');
+    let taskId = '';
     try {
+      try {
+        taskId = await saveAITask(id, {
+          type: 'format', title: `양식 변환${templateFile ? ` (${templateFile.name})` : ''}`,
+          inputText: sourceText, inputImages: [], outputText: '', outputData: null,
+          createdBy: user?.uid || '', status: 'processing', stage: '양식 변환 중...', errorMessage: '',
+        });
+        const imageFiles = [sourceFile, templateFile].filter((candidate): candidate is File => Boolean(candidate?.type.startsWith('image/')));
+        if (imageFiles.length) {
+          void Promise.all(imageFiles.map((image, index) => uploadFile(`villages/${id}/aiTasks/${taskId}/input-${index}-${image.name}`, image)))
+            .then((inputImages) => updateAITask(id, taskId, { inputImages }))
+            .catch(() => {});
+        }
+      } catch {}
       const messages: Array<{ role: 'user'; content: string | Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }> }> = [];
 
       const contentParts: Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }> = [];
@@ -117,18 +132,12 @@ export default function FormatPage({ params }: { params: { id: string } }) {
       if (data.error) throw new Error(data.error);
       setResult(data.text);
       try {
-        await saveAITask(id, {
-          type: 'format',
-          title: `양식 변환${templateFile ? ` (${templateFile.name})` : ''}`,
-          inputText: sourceText,
-          inputImages: sourcePreview ? [sourcePreview] : [],
-          outputText: data.text,
-          outputData: null,
-          createdBy: user?.uid || '',
-        });
+        if (taskId) await updateAITask(id, taskId, { outputText: data.text, outputData: null, status: 'completed', stage: '변환 완료', errorMessage: '' });
       } catch {}
     } catch (e) {
-      setError(e instanceof Error ? e.message : '변환에 실패했습니다.');
+      const message = e instanceof Error ? e.message : '변환에 실패했습니다.';
+      setError(message);
+      try { if (taskId) await updateAITask(id, taskId, { status: 'failed', stage: '변환 실패', errorMessage: message }); } catch {}
     } finally {
       setLoading(false);
     }

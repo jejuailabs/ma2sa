@@ -3,7 +3,8 @@
 import { useState, useRef } from 'react';
 import { Volume2, Loader2, Play, Pause, Download, RefreshCw, Square } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
-import { saveAITask } from '@/lib/firebase/firestore';
+import { saveAITask, updateAITask } from '@/lib/firebase/firestore';
+import { uploadFile } from '@/lib/firebase/storage';
 import { useAuth } from '@/hooks/useAuth';
 
 const SAMPLE_TEXT = '안녕하십니까, 마을 주민 여러분. 오늘 날씨가 좋습니다.';
@@ -28,6 +29,7 @@ export default function NarrationPage({ params }: { params: { id: string } }) {
   const { user } = useAuth();
   const audioRef = useRef<HTMLAudioElement>(null);
   const previewAudioRef = useRef<HTMLAudioElement>(null);
+  const taskIdRef = useRef('');
   const [text, setText] = useState('');
   const [voice, setVoice] = useState('nova');
   const [speed, setSpeed] = useState(0.9);
@@ -38,6 +40,23 @@ export default function NarrationPage({ params }: { params: { id: string } }) {
   const [error, setError] = useState('');
   const [previewLoading, setPreviewLoading] = useState('');
   const [previewPlaying, setPreviewPlaying] = useState('');
+
+  const startTask = async (inputText: string, status: 'draft' | 'processing', stage: string) => {
+    try {
+      if (taskIdRef.current) {
+        await updateAITask(id, taskIdRef.current, { inputText, status, stage, errorMessage: '' });
+        return taskIdRef.current;
+      }
+      const taskId = await saveAITask(id, {
+        type: 'narration', title: `나레이션 생성 (${VOICES.find((v) => v.value === voice)?.label || voice})`,
+        inputText, inputImages: [], outputText: '', outputData: null, createdBy: user?.uid || '', status, stage, errorMessage: '',
+      });
+      taskIdRef.current = taskId;
+      return taskId;
+    } catch {
+      return '';
+    }
+  };
 
   const previewVoice = async (voiceId: string) => {
     if (previewPlaying === voiceId) {
@@ -81,6 +100,7 @@ export default function NarrationPage({ params }: { params: { id: string } }) {
     setPolishing(true);
     setError('');
     try {
+      const taskId = await startTask(text, 'processing', 'AI 원고 다듬기 중...');
       const response = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -102,8 +122,11 @@ export default function NarrationPage({ params }: { params: { id: string } }) {
       const data = await response.json();
       if (data.error) throw new Error(data.error);
       setText(data.text);
+      try { await updateAITask(id, taskId, { inputText: data.text, status: 'draft', stage: '원고 다듬기 완료 - 음성 생성 대기' }); } catch {}
     } catch (e) {
-      setError(e instanceof Error ? e.message : '원고 정리에 실패했습니다.');
+      const message = e instanceof Error ? e.message : '원고 정리에 실패했습니다.';
+      setError(message);
+      try { if (taskIdRef.current) await updateAITask(id, taskIdRef.current, { status: 'failed', stage: '원고 다듬기 실패', errorMessage: message }); } catch {}
     } finally {
       setPolishing(false);
     }
@@ -115,6 +138,7 @@ export default function NarrationPage({ params }: { params: { id: string } }) {
     setError('');
     setAudioUrl('');
     try {
+      const taskId = await startTask(text, 'processing', '음성 생성 중...');
       const response = await fetch('/api/ai/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -130,18 +154,22 @@ export default function NarrationPage({ params }: { params: { id: string } }) {
       const url = URL.createObjectURL(blob);
       setAudioUrl(url);
       try {
-        await saveAITask(id, {
-          type: 'narration',
-          title: `나레이션 생성 (${VOICES.find((v) => v.value === voice)?.label || voice})`,
-          inputText: text,
-          inputImages: [],
-          outputText: `음성 생성 완료 — 목소리: ${VOICES.find((v) => v.value === voice)?.label}, 속도: ${speed}x`,
-          outputData: null,
-          createdBy: user?.uid || '',
-        });
+        if (taskId) {
+          let savedAudioUrl = '';
+          try {
+            savedAudioUrl = await uploadFile(`villages/${id}/aiTasks/${taskId}/broadcast.mp3`, new File([blob], 'broadcast.mp3', { type: 'audio/mpeg' }));
+          } catch {}
+          await updateAITask(id, taskId, {
+            outputText: `음성 생성 완료 — 목소리: ${VOICES.find((v) => v.value === voice)?.label}, 속도: ${speed}x`,
+            outputData: { audioUrl: savedAudioUrl, voice, speed }, status: 'completed', stage: '음성 생성 완료', errorMessage: '',
+          });
+          taskIdRef.current = '';
+        }
       } catch {}
     } catch (e) {
-      setError(e instanceof Error ? e.message : '음성 생성에 실패했습니다.');
+      const message = e instanceof Error ? e.message : '음성 생성에 실패했습니다.';
+      setError(message);
+      try { if (taskIdRef.current) await updateAITask(id, taskIdRef.current, { status: 'failed', stage: '음성 생성 실패', errorMessage: message }); } catch {}
     } finally {
       setLoading(false);
     }
