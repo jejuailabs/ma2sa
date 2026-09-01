@@ -15,7 +15,6 @@ import { AIFeatureButton } from '@/components/dashboard/AIFeatureButton';
 import { PhotoGrid } from '@/components/dashboard/PhotoGrid';
 import { getDashboardData, getVillage } from '@/lib/firebase/firestore';
 import { isFirebaseConfigured } from '@/lib/firebase/config';
-import { MOCK_PHOTOS, MOCK_POSTS, MOCK_STATS, MOCK_TODOS } from '@/lib/mockData';
 import { formatCurrency } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import type { DashboardStats, Post, VillageDocument } from '@/types/feed';
@@ -24,8 +23,8 @@ export default function DashboardPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const { user } = useAuth();
   const [villageName, setVillageName] = useState('내 마을');
-  const [stats, setStats] = useState<DashboardStats>(MOCK_STATS);
-  const [posts, setPosts] = useState<Post[]>(MOCK_POSTS.slice(0, 3));
+  const [stats, setStats] = useState<DashboardStats>({ news: 0, events: 0, meetings: 0, members: 0, todos: 0, balance: 0 });
+  const [posts, setPosts] = useState<Post[]>([]);
   const [documents, setDocuments] = useState<VillageDocument[]>([]);
   const [error, setError] = useState('');
 
@@ -87,31 +86,21 @@ export default function DashboardPage({ params }: { params: { id: string } }) {
 
             {/* Right sidebar */}
             <aside className="hidden xl:block w-72 shrink-0 space-y-4">
-              <TodoList initialTodos={isFirebaseConfigured ? [] : MOCK_TODOS} villageId={id} userId={user?.uid} />
+              <TodoList initialTodos={[]} villageId={id} userId={user?.uid} />
 
               {/* Budget card */}
               <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-5">
-                <h3 className="font-bold text-[var(--color-text)] mb-3">이번 달 예산</h3>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-[var(--color-text-secondary)]">사용 금액</span>
-                  <span className="text-sm font-medium">42%</span>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-[var(--color-text)]">자금 현황</h3>
+                  <Link href={`/village/${id}/finance`} className="text-xs text-primary">관리 &rsaquo;</Link>
                 </div>
-                <div className="h-2 rounded-full bg-[var(--color-surface)] mb-4">
-                  <div className="h-full rounded-full bg-primary" style={{ width: '42%' }} />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-[var(--color-surface)] rounded-lg p-3">
-                    <p className="text-[10px] text-[var(--color-text-secondary)]">총 예산</p>
-                    <p className="text-sm font-bold">3,000,000원</p>
-                  </div>
-                  <div className="bg-primary-light rounded-lg p-3">
-                    <p className="text-[10px] text-primary">남은 금액</p>
-                    <p className="text-sm font-bold text-primary">1,750,000원</p>
-                  </div>
+                <div className="bg-primary-light rounded-lg p-3 text-center">
+                  <p className="text-[10px] text-primary">잔액</p>
+                  <p className="text-lg font-bold text-primary">{formatCurrency(stats.balance)}</p>
                 </div>
               </div>
 
-              <PhotoGrid photos={photos.length ? photos : MOCK_PHOTOS} />
+              {photos.length > 0 && <PhotoGrid photos={photos} />}
             </aside>
           </div>
         </div>

@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, Mic, Loader2, Copy, Check, Download, Upload } from 'lucide-react';
-import { AccessGuard } from '@/components/auth/AccessGuard';
-import { BottomTabBar } from '@/components/common/BottomTabBar';
+import { Mic, Loader2, Copy, Check, Download, Upload } from 'lucide-react';
+import { DashboardShell } from '@/components/dashboard/DashboardShell';
 
 export default function TranscribePage({ params }: { params: { id: string } }) {
   const { id } = params;
@@ -116,94 +114,85 @@ export default function TranscribePage({ params }: { params: { id: string } }) {
   };
 
   return (
-    <AccessGuard villageId={id} adminOnly>
-      <div className="min-h-screen pb-20 md:pb-0 bg-[var(--color-bg)]">
-        <div className="max-w-3xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-3 mb-6">
-            <Link href={`/village/${id}/ai`} className="p-2 rounded-lg hover:bg-[var(--color-surface)]">
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center">
-                <Mic className="w-4 h-4 text-orange-500" />
-              </div>
-              <h1 className="text-xl font-bold">회의록 자동 정리</h1>
-            </div>
+    <DashboardShell villageId={id}>
+      <div className="max-w-3xl">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-9 h-9 rounded-lg bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center">
+            <Mic className="w-5 h-5 text-orange-500" />
           </div>
-
-          {/* Step 1: Upload or paste */}
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6 mb-4">
-            <div className="flex gap-2 mb-4">
-              {['upload', 'transcript', 'result'].map((s, i) => (
-                <div key={s} className={`flex-1 h-1.5 rounded-full ${i <= ['upload', 'transcript', 'result'].indexOf(step) ? 'bg-primary' : 'bg-[var(--color-border)]'}`} />
-              ))}
-            </div>
-
-            {step === 'upload' && (
-              <>
-                <p className="text-sm text-[var(--color-text-secondary)] mb-4">녹음 파일을 업로드하거나, 회의 내용을 직접 입력할 수 있습니다.</p>
-                <input ref={fileRef} type="file" accept="audio/*,.m4a,.mp3,.wav,.webm" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
-
-                <div className="grid sm:grid-cols-2 gap-3 mb-4">
-                  <button onClick={() => fileRef.current?.click()} className="p-6 rounded-xl border-2 border-dashed border-[var(--color-border)] flex flex-col items-center gap-2 hover:border-primary transition-colors">
-                    <Upload className="w-8 h-8 text-[var(--color-text-secondary)]" />
-                    <span className="text-sm font-medium">녹음 파일 업로드</span>
-                    <span className="text-xs text-[var(--color-text-secondary)]">MP3, M4A, WAV</span>
-                  </button>
-                  <button onClick={() => { setTranscript(''); setStep('transcript'); }} className="p-6 rounded-xl border-2 border-dashed border-[var(--color-border)] flex flex-col items-center gap-2 hover:border-primary transition-colors">
-                    <Mic className="w-8 h-8 text-[var(--color-text-secondary)]" />
-                    <span className="text-sm font-medium">직접 입력</span>
-                    <span className="text-xs text-[var(--color-text-secondary)]">회의 내용 붙여넣기</span>
-                  </button>
-                </div>
-
-                {file && (
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-bg)]">
-                    <span className="text-sm truncate">{file.name}</span>
-                    <button onClick={transcribeAudio} disabled={loading} className="px-4 py-1.5 rounded-lg bg-primary text-white text-sm disabled:opacity-50">
-                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : '다음'}
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-
-            {step === 'transcript' && (
-              <>
-                <p className="text-sm text-[var(--color-text-secondary)] mb-3">회의 내용을 입력하거나 수정한 후 "회의록 정리" 버튼을 누르세요.</p>
-                <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={12} placeholder="회의 내용을 붙여넣거나 입력하세요...&#10;&#10;예: 12월 10일 마을회관에서 정기 마을회의가 열렸습니다. 참석자는 이장 김OO, 사무장 박OO 등 15명이며..." className="w-full px-4 py-3 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl resize-none focus:outline-none focus:border-primary mb-4" />
-                <div className="flex gap-2">
-                  <button onClick={() => setStep('upload')} className="flex-1 py-3 rounded-xl border border-[var(--color-border)] text-sm">이전</button>
-                  <button onClick={generateSummary} disabled={loading || !transcript.trim()} className="flex-1 py-3 rounded-xl bg-primary text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50">
-                    {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> 정리 중...</> : '회의록 정리'}
-                  </button>
-                </div>
-              </>
-            )}
-
-            {step === 'result' && summary && (
-              <>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold">회의록</h3>
-                  <div className="flex gap-2">
-                    <button onClick={copyResult} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs border border-[var(--color-border)] hover:border-primary">
-                      {copied ? <><Check className="w-3.5 h-3.5" /> 복사됨</> : <><Copy className="w-3.5 h-3.5" /> 복사</>}
-                    </button>
-                    <button onClick={downloadTxt} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-primary text-white hover:opacity-90">
-                      <Download className="w-3.5 h-3.5" /> 다운로드
-                    </button>
-                  </div>
-                </div>
-                <div className="bg-[var(--color-bg)] rounded-xl p-5 font-mono text-sm whitespace-pre-wrap leading-relaxed">{summary}</div>
-                <button onClick={() => setStep('transcript')} className="mt-4 w-full py-2 rounded-xl border border-[var(--color-border)] text-sm">다시 정리하기</button>
-              </>
-            )}
-          </div>
-
-          {error && <div className="p-4 rounded-xl bg-red-50 text-error text-sm">{error}</div>}
+          <h1 className="text-xl font-bold">회의록 자동 정리</h1>
         </div>
+
+        <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-6 mb-4">
+          <div className="flex gap-2 mb-4">
+            {['upload', 'transcript', 'result'].map((s, i) => (
+              <div key={s} className={`flex-1 h-1.5 rounded-full ${i <= ['upload', 'transcript', 'result'].indexOf(step) ? 'bg-primary' : 'bg-[var(--color-border)]'}`} />
+            ))}
+          </div>
+
+          {step === 'upload' && (
+            <>
+              <p className="text-sm text-[var(--color-text-secondary)] mb-4">녹음 파일을 업로드하거나, 회의 내용을 직접 입력할 수 있습니다.</p>
+              <input ref={fileRef} type="file" accept="audio/*,.m4a,.mp3,.wav,.webm" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
+
+              <div className="grid sm:grid-cols-2 gap-3 mb-4">
+                <button onClick={() => fileRef.current?.click()} className="p-6 rounded-xl border-2 border-dashed border-[var(--color-border)] flex flex-col items-center gap-2 hover:border-primary transition-colors">
+                  <Upload className="w-8 h-8 text-[var(--color-text-secondary)]" />
+                  <span className="text-sm font-medium">녹음 파일 업로드</span>
+                  <span className="text-xs text-[var(--color-text-secondary)]">MP3, M4A, WAV</span>
+                </button>
+                <button onClick={() => { setTranscript(''); setStep('transcript'); }} className="p-6 rounded-xl border-2 border-dashed border-[var(--color-border)] flex flex-col items-center gap-2 hover:border-primary transition-colors">
+                  <Mic className="w-8 h-8 text-[var(--color-text-secondary)]" />
+                  <span className="text-sm font-medium">직접 입력</span>
+                  <span className="text-xs text-[var(--color-text-secondary)]">회의 내용 붙여넣기</span>
+                </button>
+              </div>
+
+              {file && (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-surface)]">
+                  <span className="text-sm truncate">{file.name}</span>
+                  <button onClick={transcribeAudio} disabled={loading} className="px-4 py-1.5 rounded-lg bg-primary text-white text-sm disabled:opacity-50">
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : '다음'}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {step === 'transcript' && (
+            <>
+              <p className="text-sm text-[var(--color-text-secondary)] mb-3">회의 내용을 입력하거나 수정한 후 "회의록 정리" 버튼을 누르세요.</p>
+              <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={12} placeholder="회의 내용을 붙여넣거나 입력하세요...&#10;&#10;예: 12월 10일 마을회관에서 정기 마을회의가 열렸습니다. 참석자는 이장 김OO, 사무장 박OO 등 15명이며..." className="w-full px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl resize-none focus:outline-none focus:border-primary mb-4" />
+              <div className="flex gap-2">
+                <button onClick={() => setStep('upload')} className="flex-1 py-3 rounded-xl border border-[var(--color-border)] text-sm">이전</button>
+                <button onClick={generateSummary} disabled={loading || !transcript.trim()} className="flex-1 py-3 rounded-xl bg-primary text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50">
+                  {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> 정리 중...</> : '회의록 정리'}
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 'result' && summary && (
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold">회의록</h3>
+                <div className="flex gap-2">
+                  <button onClick={copyResult} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs border border-[var(--color-border)] hover:border-primary">
+                    {copied ? <><Check className="w-3.5 h-3.5" /> 복사됨</> : <><Copy className="w-3.5 h-3.5" /> 복사</>}
+                  </button>
+                  <button onClick={downloadTxt} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-primary text-white hover:opacity-90">
+                    <Download className="w-3.5 h-3.5" /> 다운로드
+                  </button>
+                </div>
+              </div>
+              <div className="bg-[var(--color-surface)] rounded-xl p-5 font-mono text-sm whitespace-pre-wrap leading-relaxed">{summary}</div>
+              <button onClick={() => setStep('transcript')} className="mt-4 w-full py-2 rounded-xl border border-[var(--color-border)] text-sm">다시 정리하기</button>
+            </>
+          )}
+        </div>
+
+        {error && <div className="p-4 rounded-xl bg-red-50 text-error text-sm">{error}</div>}
       </div>
-      <BottomTabBar />
-    </AccessGuard>
+    </DashboardShell>
   );
 }

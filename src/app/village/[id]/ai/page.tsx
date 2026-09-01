@@ -1,9 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Header } from '@/components/common/Header';
-import { BottomTabBar } from '@/components/common/BottomTabBar';
-import { FileSearch, Receipt, FileText, Mic, Volume2, FolderOpen, ArrowLeft } from 'lucide-react';
+import { FileSearch, Receipt, FileText, Mic, Volume2, FolderOpen } from 'lucide-react';
+import { DashboardShell } from '@/components/dashboard/DashboardShell';
 
 const AI_FEATURES = [
   { icon: FileSearch, label: '공고문 분석', description: '공고문 이미지/PDF를 업로드하면 AI가 핵심 내용을 추출·요약합니다', href: 'announcement', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10' },
@@ -18,35 +17,25 @@ export default function AIHubPage({ params }: { params: { id: string } }) {
   const { id } = params;
 
   return (
-    <div className="min-h-screen pb-20 md:pb-0">
-      <Header />
-
-      <main className="max-w-content mx-auto px-4 sm:px-6 py-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Link href={`/village/${id}`} className="p-2 rounded-lg hover:bg-[var(--color-surface)] transition-colors">
-            <ArrowLeft className="w-5 h-5 text-[var(--color-text)]" />
-          </Link>
-          <h1 className="text-xl font-bold text-[var(--color-text)]">AI 기능</h1>
-        </div>
-
+    <DashboardShell villageId={id}>
+      <div>
+        <h1 className="text-xl font-bold mb-6">AI 업무 도구</h1>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {AI_FEATURES.map((feature) => (
             <Link
               key={feature.label}
               href={`/village/${id}/ai/${feature.href}`}
-              className="flex flex-col p-6 rounded-card border border-[var(--color-border)] bg-[var(--color-bg)] hover:shadow-md hover:scale-[1.02] transition-all duration-200"
+              className="flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] hover:shadow-md hover:scale-[1.02] transition-all duration-200"
             >
               <div className={`w-12 h-12 rounded-xl ${feature.bg} flex items-center justify-center mb-4`}>
                 <feature.icon className={`w-6 h-6 ${feature.color}`} />
               </div>
-              <h3 className="font-semibold text-[var(--color-text)] mb-2">{feature.label}</h3>
+              <h3 className="font-semibold mb-2">{feature.label}</h3>
               <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">{feature.description}</p>
             </Link>
           ))}
         </div>
-      </main>
-
-      <BottomTabBar />
-    </div>
+      </div>
+    </DashboardShell>
   );
 }

@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, FileText, Receipt, Mic, Volume2, FileSearch, FolderOpen, Search, Loader2, Trash2 } from 'lucide-react';
-import { AccessGuard } from '@/components/auth/AccessGuard';
-import { BottomTabBar } from '@/components/common/BottomTabBar';
+import { FileText, Receipt, Mic, Volume2, FileSearch, FolderOpen, Search, Loader2, Trash2 } from 'lucide-react';
+import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { isFirebaseConfigured } from '@/lib/firebase/config';
 import { db } from '@/lib/firebase/config';
 import { collection, query, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
@@ -70,97 +69,85 @@ export default function DocsPage({ params }: { params: { id: string } }) {
     .filter((d) => !searchText || d.title.includes(searchText) || d.content.includes(searchText));
 
   return (
-    <AccessGuard villageId={id} adminOnly>
-      <div className="min-h-screen pb-20 md:pb-0 bg-[var(--color-bg)]">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-3 mb-6">
-            <Link href={`/village/${id}`} className="p-2 rounded-lg hover:bg-[var(--color-surface)]">
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-500/10 flex items-center justify-center">
-                <FolderOpen className="w-4 h-4 text-gray-600" />
-              </div>
-              <h1 className="text-xl font-bold">마을 문서함</h1>
-            </div>
+    <DashboardShell villageId={id}>
+      <div>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-500/10 flex items-center justify-center">
+            <FolderOpen className="w-5 h-5 text-gray-600" />
           </div>
+          <h1 className="text-xl font-bold">마을 문서함</h1>
+        </div>
 
-          {/* Filters */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {[{ value: 'all', label: '전체' }, ...Object.entries(TYPE_CONFIG).map(([v, c]) => ({ value: v, label: c.label }))].map((f) => (
-              <button key={f.value} onClick={() => setFilter(f.value)} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${filter === f.value ? 'bg-primary text-white' : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-primary'}`}>
-                {f.label}
-              </button>
-            ))}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {[{ value: 'all', label: '전체' }, ...Object.entries(TYPE_CONFIG).map(([v, c]) => ({ value: v, label: c.label }))].map((f) => (
+            <button key={f.value} onClick={() => setFilter(f.value)} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${filter === f.value ? 'bg-primary text-white' : 'bg-[var(--color-bg)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-primary'}`}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-secondary)]" />
+          <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="문서 검색..." className="w-full pl-10 pr-4 py-2.5 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl text-sm focus:outline-none focus:border-primary" />
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16">
+            <FolderOpen className="w-12 h-12 text-[var(--color-text-secondary)] mx-auto mb-3" />
+            <p className="text-[var(--color-text-secondary)] mb-2">
+              {docs.length === 0 ? '아직 저장된 문서가 없습니다' : '검색 결과가 없습니다'}
+            </p>
+            <p className="text-xs text-[var(--color-text-secondary)]">AI 기능을 사용하면 결과가 여기에 자동 저장됩니다</p>
+            <Link href={`/village/${id}/ai`} className="inline-block mt-4 px-4 py-2 rounded-lg bg-primary text-white text-sm">AI 기능 바로가기</Link>
           </div>
-
-          {/* Search */}
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-secondary)]" />
-            <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="문서 검색..." className="w-full pl-10 pr-4 py-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-sm focus:outline-none focus:border-primary" />
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-16">
-              <FolderOpen className="w-12 h-12 text-[var(--color-text-secondary)] mx-auto mb-3" />
-              <p className="text-[var(--color-text-secondary)] mb-2">
-                {docs.length === 0 ? '아직 저장된 문서가 없습니다' : '검색 결과가 없습니다'}
-              </p>
-              <p className="text-xs text-[var(--color-text-secondary)]">AI 기능을 사용하면 결과가 여기에 자동 저장됩니다</p>
-              <Link href={`/village/${id}/ai`} className="inline-block mt-4 px-4 py-2 rounded-lg bg-primary text-white text-sm">AI 기능 바로가기</Link>
-            </div>
-          ) : (
-            <div className="flex gap-4">
-              {/* Document List */}
-              <div className={`${selected ? 'hidden sm:block sm:w-1/3' : 'w-full'} space-y-2`}>
-                {filtered.map((d) => {
-                  const cfg = TYPE_CONFIG[d.type] || TYPE_CONFIG.other;
-                  const Icon = cfg.icon;
-                  return (
-                    <button key={d.id} onClick={() => setSelected(d)} className={`w-full text-left p-4 rounded-xl border transition-colors ${selected?.id === d.id ? 'border-primary bg-primary-light' : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:border-primary/50'}`}>
-                      <div className="flex items-start gap-3">
-                        <div className={`w-8 h-8 rounded-lg ${cfg.bg} flex items-center justify-center shrink-0 mt-0.5`}>
-                          <Icon className={`w-4 h-4 ${cfg.color}`} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{d.title}</p>
-                          <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">{cfg.label} · {d.createdAt.toLocaleDateString('ko-KR')}</p>
-                        </div>
+        ) : (
+          <div className="flex gap-4">
+            <div className={`${selected ? 'hidden sm:block sm:w-1/3' : 'w-full'} space-y-2`}>
+              {filtered.map((d) => {
+                const cfg = TYPE_CONFIG[d.type] || TYPE_CONFIG.other;
+                const Icon = cfg.icon;
+                return (
+                  <button key={d.id} onClick={() => setSelected(d)} className={`w-full text-left p-4 rounded-xl border transition-colors ${selected?.id === d.id ? 'border-primary bg-primary-light' : 'border-[var(--color-border)] bg-[var(--color-bg)] hover:border-primary/50'}`}>
+                    <div className="flex items-start gap-3">
+                      <div className={`w-8 h-8 rounded-lg ${cfg.bg} flex items-center justify-center shrink-0 mt-0.5`}>
+                        <Icon className={`w-4 h-4 ${cfg.color}`} />
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{d.title}</p>
+                        <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">{cfg.label} · {d.createdAt.toLocaleDateString('ko-KR')}</p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
 
-              {/* Document Detail */}
-              {selected && (
-                <div className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="font-bold">{selected.title}</h3>
-                      <p className="text-xs text-[var(--color-text-secondary)] mt-1">
-                        {TYPE_CONFIG[selected.type]?.label} · {selected.createdAt.toLocaleString('ko-KR')}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleDelete(selected.id)} className="p-2 rounded-lg text-error hover:bg-error/10" title="삭제">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setSelected(null)} className="sm:hidden p-2 rounded-lg hover:bg-[var(--color-bg)] text-sm">닫기</button>
-                    </div>
+            {selected && (
+              <div className="flex-1 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="font-bold">{selected.title}</h3>
+                    <p className="text-xs text-[var(--color-text-secondary)] mt-1">
+                      {TYPE_CONFIG[selected.type]?.label} · {selected.createdAt.toLocaleString('ko-KR')}
+                    </p>
                   </div>
-                  <div className="bg-[var(--color-bg)] rounded-xl p-4 text-sm whitespace-pre-wrap leading-relaxed max-h-[60vh] overflow-auto">
-                    {selected.content || '(내용 없음)'}
+                  <div className="flex gap-2">
+                    <button onClick={() => handleDelete(selected.id)} className="p-2 rounded-lg text-error hover:bg-error/10" title="삭제">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setSelected(null)} className="sm:hidden p-2 rounded-lg hover:bg-[var(--color-surface)] text-sm">닫기</button>
                   </div>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+                <div className="bg-[var(--color-surface)] rounded-xl p-4 text-sm whitespace-pre-wrap leading-relaxed max-h-[60vh] overflow-auto">
+                  {selected.content || '(내용 없음)'}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-      <BottomTabBar />
-    </AccessGuard>
+    </DashboardShell>
   );
 }

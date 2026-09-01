@@ -1,10 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, FileText, Loader2, Copy, Check, Download } from 'lucide-react';
-import { AccessGuard } from '@/components/auth/AccessGuard';
-import { BottomTabBar } from '@/components/common/BottomTabBar';
+import { FileText, Loader2, Copy, Check, Download } from 'lucide-react';
+import { DashboardShell } from '@/components/dashboard/DashboardShell';
 
 const TEMPLATES = [
   { value: 'notice', label: '공지문/안내문', desc: '마을 주민 대상 공지사항' },
@@ -79,65 +77,57 @@ export default function FormatPage({ params }: { params: { id: string } }) {
   };
 
   return (
-    <AccessGuard villageId={id} adminOnly>
-      <div className="min-h-screen pb-20 md:pb-0 bg-[var(--color-bg)]">
-        <div className="max-w-3xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-3 mb-6">
-            <Link href={`/village/${id}/ai`} className="p-2 rounded-lg hover:bg-[var(--color-surface)]">
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center">
-                <FileText className="w-4 h-4 text-purple-500" />
-              </div>
-              <h1 className="text-xl font-bold">텍스트 → 양식 변환</h1>
-            </div>
+    <DashboardShell villageId={id}>
+      <div className="max-w-3xl">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-9 h-9 rounded-lg bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center">
+            <FileText className="w-5 h-5 text-purple-500" />
           </div>
-
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6 mb-4">
-            <label className="block mb-4">
-              <span className="text-sm font-medium mb-2 block">문서 양식 선택</span>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {TEMPLATES.map((t) => (
-                  <button key={t.value} onClick={() => setTemplate(t.value)} className={`p-3 rounded-xl text-left transition-all ${template === t.value ? 'bg-primary text-white' : 'bg-[var(--color-bg)] border border-[var(--color-border)] hover:border-primary'}`}>
-                    <span className="text-sm font-medium block">{t.label}</span>
-                    <span className={`text-xs ${template === t.value ? 'text-white/70' : 'text-[var(--color-text-secondary)]'}`}>{t.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </label>
-
-            <label className="block mb-4">
-              <span className="text-sm font-medium mb-2 block">내용 입력</span>
-              <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={8} placeholder="변환할 내용을 자유롭게 입력하세요. 메모, 초안, 키워드 등 어떤 형태든 괜찮습니다.&#10;&#10;예: 12월 15일 마을회관에서 주민총회 합니다. 안건은 내년도 예산 심의, 마을 도로 보수 건. 저녁 6시." className="w-full px-4 py-3 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl resize-none focus:outline-none focus:border-primary" />
-            </label>
-
-            <button onClick={convert} disabled={loading || !input.trim()} className="w-full py-3 rounded-xl bg-primary text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50">
-              {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> 변환 중...</> : '양식 변환하기'}
-            </button>
-          </div>
-
-          {error && <div className="p-4 rounded-xl bg-red-50 text-error text-sm mb-4">{error}</div>}
-
-          {result && (
-            <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold">변환 결과</h3>
-                <div className="flex gap-2">
-                  <button onClick={copyResult} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs border border-[var(--color-border)] hover:border-primary">
-                    {copied ? <><Check className="w-3.5 h-3.5" /> 복사됨</> : <><Copy className="w-3.5 h-3.5" /> 복사</>}
-                  </button>
-                  <button onClick={downloadTxt} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-primary text-white hover:opacity-90">
-                    <Download className="w-3.5 h-3.5" /> 다운로드
-                  </button>
-                </div>
-              </div>
-              <div className="bg-[var(--color-bg)] rounded-xl p-5 font-mono text-sm whitespace-pre-wrap leading-relaxed">{result}</div>
-            </div>
-          )}
+          <h1 className="text-xl font-bold">텍스트 → 양식 변환</h1>
         </div>
+
+        <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-6 mb-4">
+          <label className="block mb-4">
+            <span className="text-sm font-medium mb-2 block">문서 양식 선택</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {TEMPLATES.map((t) => (
+                <button key={t.value} onClick={() => setTemplate(t.value)} className={`p-3 rounded-xl text-left transition-all ${template === t.value ? 'bg-primary text-white' : 'bg-[var(--color-surface)] border border-[var(--color-border)] hover:border-primary'}`}>
+                  <span className="text-sm font-medium block">{t.label}</span>
+                  <span className={`text-xs ${template === t.value ? 'text-white/70' : 'text-[var(--color-text-secondary)]'}`}>{t.desc}</span>
+                </button>
+              ))}
+            </div>
+          </label>
+
+          <label className="block mb-4">
+            <span className="text-sm font-medium mb-2 block">내용 입력</span>
+            <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={8} placeholder="변환할 내용을 자유롭게 입력하세요. 메모, 초안, 키워드 등 어떤 형태든 괜찮습니다.&#10;&#10;예: 12월 15일 마을회관에서 주민총회 합니다. 안건은 내년도 예산 심의, 마을 도로 보수 건. 저녁 6시." className="w-full px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl resize-none focus:outline-none focus:border-primary" />
+          </label>
+
+          <button onClick={convert} disabled={loading || !input.trim()} className="w-full py-3 rounded-xl bg-primary text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50">
+            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> 변환 중...</> : '양식 변환하기'}
+          </button>
+        </div>
+
+        {error && <div className="p-4 rounded-xl bg-red-50 text-error text-sm mb-4">{error}</div>}
+
+        {result && (
+          <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold">변환 결과</h3>
+              <div className="flex gap-2">
+                <button onClick={copyResult} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs border border-[var(--color-border)] hover:border-primary">
+                  {copied ? <><Check className="w-3.5 h-3.5" /> 복사됨</> : <><Copy className="w-3.5 h-3.5" /> 복사</>}
+                </button>
+                <button onClick={downloadTxt} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-primary text-white hover:opacity-90">
+                  <Download className="w-3.5 h-3.5" /> 다운로드
+                </button>
+              </div>
+            </div>
+            <div className="bg-[var(--color-surface)] rounded-xl p-5 font-mono text-sm whitespace-pre-wrap leading-relaxed">{result}</div>
+          </div>
+        )}
       </div>
-      <BottomTabBar />
-    </AccessGuard>
+    </DashboardShell>
   );
 }
