@@ -5,6 +5,8 @@ interface Message {
   content: string | Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }>;
 }
 
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
   if (!ANTHROPIC_API_KEY) {
@@ -50,7 +52,8 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await res.json();
-    const text = data.content?.[0]?.text ?? '';
+    const textBlock = data.content?.find((b: { type: string }) => b.type === 'text');
+    const text = textBlock?.text ?? '';
     const usage = data.usage ?? {};
 
     return NextResponse.json({

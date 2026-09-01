@@ -11,15 +11,17 @@ export default function TranscribePage({ params }: { params: { id: string } }) {
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+
   const [file, setFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState('');
   const [playing, setPlaying] = useState(false);
+
   const [transcript, setTranscript] = useState('');
   const [summary, setSummary] = useState('');
-  const [step, setStep] = useState<'upload' | 'transcript' | 'result'>('upload');
-  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<'upload' | 'transcribing' | 'transcript' | 'summarizing' | 'result'>('upload');
   const [error, setError] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [copiedRaw, setCopiedRaw] = useState(false);
+  const [copiedResult, setCopiedResult] = useState(false);
 
   const handleFile = (f: File) => {
     setFile(f);
@@ -40,20 +42,32 @@ export default function TranscribePage({ params }: { params: { id: string } }) {
 
   const transcribeAudio = async () => {
     if (!file) return;
-    setLoading(true);
     setError('');
+    setStep('transcribing');
     try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/ai/stt', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      if (!data.text?.trim()) throw new Error('음성에서 텍스트를 추출할 수 없었습니다. 다른 파일을 시도해주세요.');
+      setTranscript(data.text);
       setStep('transcript');
-      setTranscript('(음성 인식은 Google Speech-to-Text API 연동 후 자동 변환됩니다)\n\n아래에 회의 내용을 직접 붙여넣거나 수정할 수 있습니다.');
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '음성 인식에 실패했습니다.');
+      setStep('upload');
     }
+  };
+
+  const directInput = () => {
+    setTranscript('');
+    setStep('transcript');
   };
 
   const generateSummary = async () => {
     if (!transcript.trim()) { setError('회의 내용을 입력해주세요.'); return; }
-    setLoading(true);
     setError('');
+    setStep('summarizing');
     try {
       const response = await fetch('/api/ai', {
         method: 'POST',
@@ -118,26 +132,29 @@ export default function TranscribePage({ params }: { params: { id: string } }) {
       } catch {}
     } catch (e) {
       setError(e instanceof Error ? e.message : '정리에 실패했습니다.');
-    } finally {
-      setLoading(false);
+      setStep('transcript');
     }
   };
 
-  const copyResult = () => {
-    navigator.clipboard.writeText(summary);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyText = (text: string, setter: (v: boolean) => void) => {
+    navigator.clipboard.writeText(text);
+    setter(true);
+    setTimeout(() => setter(false), 2000);
   };
 
-  const downloadTxt = () => {
-    const blob = new Blob([summary], { type: 'text/plain;charset=utf-8;' });
+  const downloadFile = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `회의록_${new Date().toISOString().slice(0, 10)}.txt`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const stepIndex = ['upload', 'transcribing', 'transcript', 'summarizing', 'result'].indexOf(step);
+  const progressSteps = [0, 1, 1, 2, 2];
+  const currentProgress = progressSteps[stepIndex] ?? 0;
 
   return (
     <DashboardShell villageId={id}>
@@ -150,24 +167,29 @@ export default function TranscribePage({ params }: { params: { id: string } }) {
         </div>
 
         <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-6 mb-4">
-          <div className="flex gap-2 mb-4">
-            {['upload', 'transcript', 'result'].map((s, i) => (
-              <div key={s} className={`flex-1 h-1.5 rounded-full ${i <= ['upload', 'transcript', 'result'].indexOf(step) ? 'bg-primary' : 'bg-[var(--color-border)]'}`} />
+          {/* Progress bar */}
+          <div className="flex gap-2 mb-5">
+            {['음성 업로드', '텍스트 추출', '회의록 정리'].map((label, i) => (
+              <div key={label} className="flex-1">
+                <div className={`h-1.5 rounded-full mb-1 ${i <= currentProgress ? 'bg-primary' : 'bg-[var(--color-border)]'}`} />
+                <p className={`text-[10px] text-center ${i <= currentProgress ? 'text-primary font-bold' : 'text-[var(--color-text-secondary)]'}`}>{label}</p>
+              </div>
             ))}
           </div>
 
+          {/* Step 1: Upload */}
           {step === 'upload' && (
             <>
-              <p className="text-sm text-[var(--color-text-secondary)] mb-4">녹음 파일을 업로드하거나, 회의 내용을 직접 입력할 수 있습니다.</p>
-              <input ref={fileRef} type="file" accept="audio/*,.m4a,.mp3,.wav,.webm" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
+              <p className="text-sm text-[var(--color-text-secondary)] mb-4">녹음 파일을 업로드하면 AI가 음성을 텍스트로 변환하고, 회의록으로 정리합니다.</p>
+              <input ref={fileRef} type="file" accept="audio/*,.m4a,.mp3,.wav,.webm,.ogg,.flac" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
 
               <div className="grid sm:grid-cols-2 gap-3 mb-4">
                 <button onClick={() => fileRef.current?.click()} className="p-6 rounded-xl border-2 border-dashed border-[var(--color-border)] flex flex-col items-center gap-2 hover:border-primary transition-colors">
                   <Upload className="w-8 h-8 text-[var(--color-text-secondary)]" />
                   <span className="text-sm font-medium">녹음 파일 업로드</span>
-                  <span className="text-xs text-[var(--color-text-secondary)]">MP3, M4A, WAV</span>
+                  <span className="text-xs text-[var(--color-text-secondary)]">MP3, M4A, WAV, FLAC (25MB 이하)</span>
                 </button>
-                <button onClick={() => { setTranscript(''); setStep('transcript'); }} className="p-6 rounded-xl border-2 border-dashed border-[var(--color-border)] flex flex-col items-center gap-2 hover:border-primary transition-colors">
+                <button onClick={directInput} className="p-6 rounded-xl border-2 border-dashed border-[var(--color-border)] flex flex-col items-center gap-2 hover:border-primary transition-colors">
                   <Mic className="w-8 h-8 text-[var(--color-text-secondary)]" />
                   <span className="text-sm font-medium">직접 입력</span>
                   <span className="text-xs text-[var(--color-text-secondary)]">회의 내용 붙여넣기</span>
@@ -184,8 +206,8 @@ export default function TranscribePage({ params }: { params: { id: string } }) {
                       <p className="text-sm font-medium truncate">{file.name}</p>
                       <p className="text-xs text-[var(--color-text-secondary)]">{(file.size / 1024 / 1024).toFixed(1)}MB</p>
                     </div>
-                    <button onClick={transcribeAudio} disabled={loading} className="px-4 py-1.5 rounded-lg bg-primary text-white text-sm disabled:opacity-50 shrink-0">
-                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : '다음'}
+                    <button onClick={transcribeAudio} className="px-5 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shrink-0">
+                      음성 인식 시작
                     </button>
                   </div>
                   <audio ref={audioRef} src={audioUrl} onEnded={() => setPlaying(false)} className="w-full h-8" controls />
@@ -194,39 +216,86 @@ export default function TranscribePage({ params }: { params: { id: string } }) {
             </>
           )}
 
+          {/* Step: Transcribing */}
+          {step === 'transcribing' && (
+            <div className="text-center py-12">
+              <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-4" />
+              <p className="text-lg font-bold mb-1">음성을 텍스트로 변환하는 중...</p>
+              <p className="text-sm text-[var(--color-text-secondary)]">파일 크기에 따라 1~2분 정도 소요될 수 있습니다.</p>
+            </div>
+          )}
+
+          {/* Step 2: Transcript */}
           {step === 'transcript' && (
             <>
-              <p className="text-sm text-[var(--color-text-secondary)] mb-3">회의 내용을 입력하거나 수정한 후 "회의록 정리" 버튼을 누르세요.</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-bold">추출된 원문 (수정 가능)</p>
+                {transcript && (
+                  <button onClick={() => copyText(transcript, setCopiedRaw)} className="flex items-center gap-1 text-xs text-[var(--color-text-secondary)] hover:text-primary">
+                    {copiedRaw ? <><Check className="w-3 h-3" /> 복사됨</> : <><Copy className="w-3 h-3" /> 원문 복사</>}
+                  </button>
+                )}
+              </div>
               <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={12} placeholder="회의 내용을 붙여넣거나 입력하세요...&#10;&#10;예: 12월 10일 마을회관에서 정기 마을회의가 열렸습니다. 참석자는 이장 김OO, 사무장 박OO 등 15명이며..." className="w-full px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl resize-none focus:outline-none focus:border-primary mb-4" />
               <div className="flex gap-2">
-                <button onClick={() => setStep('upload')} className="flex-1 py-3 rounded-xl border border-[var(--color-border)] text-sm">이전</button>
-                <button onClick={generateSummary} disabled={loading || !transcript.trim()} className="flex-1 py-3 rounded-xl bg-primary text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50">
-                  {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> 정리 중...</> : '회의록 정리'}
+                <button onClick={() => { setStep('upload'); setTranscript(''); }} className="flex-1 py-3 rounded-xl border border-[var(--color-border)] text-sm font-medium">이전</button>
+                <button onClick={generateSummary} disabled={!transcript.trim()} className="flex-1 py-3 rounded-xl bg-primary text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50">
+                  회의록 정리
                 </button>
               </div>
             </>
           )}
 
+          {/* Step: Summarizing */}
+          {step === 'summarizing' && (
+            <div className="text-center py-12">
+              <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-4" />
+              <p className="text-lg font-bold mb-1">회의록을 정리하는 중...</p>
+              <p className="text-sm text-[var(--color-text-secondary)]">AI가 회의 내용을 공식 회의록 양식으로 변환하고 있습니다.</p>
+            </div>
+          )}
+
+          {/* Step 3: Result */}
           {step === 'result' && summary && (
             <>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold">회의록</h3>
-                <div className="flex gap-2">
-                  <button onClick={copyResult} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs border border-[var(--color-border)] hover:border-primary">
-                    {copied ? <><Check className="w-3.5 h-3.5" /> 복사됨</> : <><Copy className="w-3.5 h-3.5" /> 복사</>}
-                  </button>
-                  <button onClick={downloadTxt} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-primary text-white hover:opacity-90">
-                    <Download className="w-3.5 h-3.5" /> 다운로드
-                  </button>
+              {/* 원문 */}
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-sm">원문 (음성 추출 텍스트)</h3>
+                  <div className="flex gap-2">
+                    <button onClick={() => copyText(transcript, setCopiedRaw)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs border border-[var(--color-border)] hover:border-primary">
+                      {copiedRaw ? <><Check className="w-3.5 h-3.5" /> 복사됨</> : <><Copy className="w-3.5 h-3.5" /> 복사</>}
+                    </button>
+                    <button onClick={() => downloadFile(transcript, `원문_${new Date().toISOString().slice(0, 10)}.txt`)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs border border-[var(--color-border)] hover:border-primary">
+                      <Download className="w-3.5 h-3.5" /> 원문 다운로드
+                    </button>
+                  </div>
                 </div>
+                <div className="bg-[var(--color-surface)] rounded-xl p-4 text-sm whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto border border-[var(--color-border)]">{transcript}</div>
               </div>
-              <div className="bg-[var(--color-surface)] rounded-xl p-5 font-mono text-sm whitespace-pre-wrap leading-relaxed">{summary}</div>
-              <button onClick={() => setStep('transcript')} className="mt-4 w-full py-2 rounded-xl border border-[var(--color-border)] text-sm">다시 정리하기</button>
+
+              {/* 결과 회의록 */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-sm">정리된 회의록</h3>
+                  <div className="flex gap-2">
+                    <button onClick={() => copyText(summary, setCopiedResult)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs border border-[var(--color-border)] hover:border-primary">
+                      {copiedResult ? <><Check className="w-3.5 h-3.5" /> 복사됨</> : <><Copy className="w-3.5 h-3.5" /> 복사</>}
+                    </button>
+                    <button onClick={() => downloadFile(summary, `회의록_${new Date().toISOString().slice(0, 10)}.txt`)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-primary text-white hover:opacity-90">
+                      <Download className="w-3.5 h-3.5" /> 회의록 다운로드
+                    </button>
+                  </div>
+                </div>
+                <div className="bg-[var(--color-surface)] rounded-xl p-5 font-mono text-sm whitespace-pre-wrap leading-relaxed border border-[var(--color-border)]">{summary}</div>
+              </div>
+
+              <button onClick={() => setStep('transcript')} className="w-full py-2 rounded-xl border border-[var(--color-border)] text-sm">원문 수정 후 다시 정리하기</button>
             </>
           )}
         </div>
 
-        {error && <div className="p-4 rounded-xl bg-red-50 text-error text-sm">{error}</div>}
+        {error && <div className="p-4 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm">{error}</div>}
       </div>
     </DashboardShell>
   );

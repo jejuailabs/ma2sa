@@ -136,8 +136,14 @@ export default function AnnouncementPage({ params }: { params: { id: string } })
           messages: [{ role: 'user', content: contentParts }],
         }),
       });
+      if (!response.ok) {
+        let detail = `서버 오류 (${response.status})`;
+        try { const e = await response.json(); if (e.error) detail = e.error; } catch {}
+        throw new Error(detail);
+      }
       const data = await response.json();
       if (data.error) throw new Error(data.error);
+      if (!data.text?.trim()) throw new Error('AI 응답이 비어있습니다. 다시 시도해주세요.');
       setResult(data.text);
       try {
         await saveAITask(id, { type: 'announcement', title: `공고문 분석 - ${file?.name || '텍스트 입력'}`, inputText: textInput, inputImages: preview ? [preview] : [], outputText: data.text, outputData: null, createdBy: user?.uid || '' });
@@ -217,17 +223,17 @@ export default function AnnouncementPage({ params }: { params: { id: string } })
             </button>
           )}
 
+          {error && (
+            <div className="flex items-start gap-2 p-4 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm mb-3">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
           <button onClick={analyze} disabled={loading || extracting || !canAnalyze} className="w-full py-3 rounded-xl bg-primary text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50">
             {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> 분석 중...</> : '분석하기'}
           </button>
         </div>
-
-        {error && (
-          <div className="flex items-start gap-2 p-4 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm mb-4">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{error}</span>
-          </div>
-        )}
 
         {result && (
           <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-6">
