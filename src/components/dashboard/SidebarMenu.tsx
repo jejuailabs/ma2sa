@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  BarChart3, FileText, FolderOpen, Home, Newspaper, Settings, Users, Wallet, Calendar,
+  BarChart3, Bot, FileText, FolderOpen, Home, Newspaper, Settings, Users, Wallet, Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +20,7 @@ const MAIN_MENU = [
   { icon: Calendar, label: '일정 관리', path: '/schedule' },
   { icon: FolderOpen, label: '문서함', path: '/docs' },
   { icon: Wallet, label: '자금 관리', path: '/finance' },
+  { icon: Bot, label: 'AI 업무', path: '/ai' },
 ];
 
 const MANAGE_MENU = [

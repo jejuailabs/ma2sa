@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-
 interface Message {
   role: 'user' | 'assistant';
   content: string | Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }>;
 }
 
 export async function POST(req: NextRequest) {
+  const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
   if (!ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: 'ANTHROPIC_API_KEY가 설정되지 않았습니다.' }, { status: 500 });
+    return NextResponse.json({ error: 'API 키가 설정되지 않았습니다. (ANTHROPIC_API_KEY 또는 CLAUDE_API_KEY)' }, { status: 500 });
   }
 
   try {
