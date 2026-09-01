@@ -4,11 +4,18 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Loader2, MapPin, Plus, Search, UserCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { createVillage, joinVillage, searchVillages } from '@/lib/firebase/firestore';
-import { putUserProfile } from '@/lib/firebase/firestore';
+import { createVillage, joinVillage, searchVillages, putUserProfile } from '@/lib/firebase/firestore';
 import { isFirebaseConfigured } from '@/lib/firebase/config';
 import type { Village } from '@/types/village';
 import { OFFICIAL_ROLES, type UserRole } from '@/types/user';
+
+interface PlaceResult {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+}
 
 type Step = 'role' | 'search' | 'create';
 
@@ -19,7 +26,9 @@ export default function VillageSetupPage() {
   const [isOfficial, setIsOfficial] = useState(false);
   const [selectedRole, setSelectedRole] = useState<UserRole>('leader');
   const [queryText, setQueryText] = useState('');
-  const [results, setResults] = useState<Village[]>([]);
+  const [placeResults, setPlaceResults] = useState<PlaceResult[]>([]);
+  const [existingVillages, setExistingVillages] = useState<Village[]>([]);
+  const [searching, setSearching] = useState(false);
   const [form, setForm] = useState({ name: '', address: '', description: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -30,16 +39,46 @@ export default function VillageSetupPage() {
   }, [firebaseUser, loading, router]);
 
   useEffect(() => {
-    if (queryText.trim().length < 2 || !isFirebaseConfigured) { setResults([]); return; }
+    if (queryText.trim().length < 2) { setPlaceResults([]); setExistingVillages([]); return; }
     const timer = window.setTimeout(async () => {
-      try { setResults(await searchVillages(queryText)); setError(''); }
-      catch { setResults([]); }
-    }, 250);
+      setSearching(true);
+      const [placesRes, firestoreRes] = await Promise.all([
+        fetch(`/api/villages/search?q=${encodeURIComponent(queryText)}`)
+          .then((r) => r.json())
+          .then((d) => (d.results ?? []) as PlaceResult[])
+          .catch(() => [] as PlaceResult[]),
+        isFirebaseConfigured
+          ? searchVillages(queryText).catch(() => [] as Village[])
+          : Promise.resolve([] as Village[]),
+      ]);
+      setPlaceResults(placesRes);
+      setExistingVillages(firestoreRes);
+      setSearching(false);
+    }, 300);
     return () => window.clearTimeout(timer);
   }, [queryText]);
 
   const proceedToVillage = () => {
     setStep('search');
+  };
+
+  const selectPlace = async (place: PlaceResult) => {
+    if (!firebaseUser) return;
+    setBusy(true); setError('');
+    try {
+      const role = isOfficial ? selectedRole : 'member';
+      const villageId = await createVillage({
+        name: place.name, address: place.address, regionCode: '', description: '',
+        photoURL: '', bannerURL: '', population: null, specialties: [], createdBy: firebaseUser.uid,
+        settings: { isPublic: true, requireApproval: true, inviteOnly: false },
+      }, firebaseUser.uid);
+      if (isOfficial && isFirebaseConfigured) {
+        await putUserProfile(firebaseUser.uid, { role });
+      }
+      await refreshProfile();
+      router.push(isOfficial ? `/village/${villageId}` : `/village/${villageId}/feed`);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : '마을을 등록하지 못했습니다.'); }
+    finally { setBusy(false); }
   };
 
   const selectVillage = async (village: Village) => {
@@ -161,17 +200,58 @@ export default function VillageSetupPage() {
           <div className="space-y-4">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-secondary)]" />
-              <input value={queryText} onChange={(e) => setQueryText(e.target.value)} placeholder="마을 이름을 입력하세요" className="w-full pl-12 pr-4 py-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl focus:outline-none focus:border-primary" autoFocus />
+              <input value={queryText} onChange={(e) => setQueryText(e.target.value)} placeholder="마을 이름을 입력하세요 (예: 조천리, 금성리)" className="w-full pl-12 pr-4 py-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl focus:outline-none focus:border-primary" autoFocus />
             </div>
             {queryText.length >= 2 && (
               <div className="border border-[var(--color-border)] rounded-xl overflow-hidden">
-                {results.map((village) => (
-                  <button key={village.id} disabled={busy} onClick={() => selectVillage(village)} className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-[var(--color-border)] hover:bg-[var(--color-surface)] disabled:opacity-50">
-                    <MapPin className="w-5 h-5 text-primary" /><div className="flex-1"><p className="text-sm font-medium">{village.name}</p><p className="text-xs text-[var(--color-text-secondary)]">{village.address}</p></div><span className="text-xs text-primary font-medium">가입</span>
-                  </button>
-                ))}
+                {searching && (
+                  <div className="flex items-center justify-center gap-2 px-4 py-4 text-sm text-[var(--color-text-secondary)]">
+                    <Loader2 className="w-4 h-4 animate-spin" /> 검색 중...
+                  </div>
+                )}
+
+                {/* 기존 등록된 마을 */}
+                {existingVillages.length > 0 && (
+                  <>
+                    <div className="px-4 py-2 bg-primary-light text-xs font-semibold text-primary">이미 등록된 마을</div>
+                    {existingVillages.map((village) => (
+                      <button key={village.id} disabled={busy} onClick={() => selectVillage(village)} className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-[var(--color-border)] hover:bg-[var(--color-surface)] disabled:opacity-50">
+                        <MapPin className="w-5 h-5 text-primary" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{village.name}</p>
+                          <p className="text-xs text-[var(--color-text-secondary)]">{village.address}</p>
+                        </div>
+                        <span className="text-xs text-white bg-primary px-2 py-0.5 rounded-full font-medium">가입</span>
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                {/* Google Places 검색 결과 */}
+                {placeResults.length > 0 && (
+                  <>
+                    <div className="px-4 py-2 bg-[var(--color-surface)] text-xs font-semibold text-[var(--color-text-secondary)]">검색 결과</div>
+                    {placeResults.map((place) => (
+                      <button key={place.id} disabled={busy} onClick={() => selectPlace(place)} className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-[var(--color-border)] hover:bg-[var(--color-surface)] disabled:opacity-50">
+                        <MapPin className="w-5 h-5 text-[var(--color-text-secondary)]" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{place.name}</p>
+                          <p className="text-xs text-[var(--color-text-secondary)]">{place.address}</p>
+                        </div>
+                        <span className="text-xs text-secondary font-medium">등록</span>
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                {!searching && placeResults.length === 0 && existingVillages.length === 0 && (
+                  <div className="px-4 py-4 text-sm text-center text-[var(--color-text-secondary)]">
+                    검색 결과가 없습니다
+                  </div>
+                )}
+
                 <button onClick={() => { setForm((v) => ({ ...v, name: queryText })); setStep('create'); }} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--color-surface)]">
-                  <Plus className="w-5 h-5 text-secondary" /><span className="text-sm text-secondary font-medium">&ldquo;{queryText}&rdquo;(으)로 새 마을 만들기</span>
+                  <Plus className="w-5 h-5 text-secondary" /><span className="text-sm text-secondary font-medium">직접 입력하여 새 마을 만들기</span>
                 </button>
               </div>
             )}
