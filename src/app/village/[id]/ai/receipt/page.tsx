@@ -12,6 +12,7 @@ interface ReceiptRow {
   amount: string;
   store: string;
   category: string;
+  note: string;
 }
 
 export default function ReceiptPage({ params }: { params: { id: string } }) {
@@ -54,12 +55,15 @@ export default function ReceiptPage({ params }: { params: { id: string } }) {
 - item: 품목명
 - quantity: 수량
 - unitPrice: 단가 (숫자만)
-- amount: 금액 (숫자만)
+- amount: 금액 (숫자만, 할인이 적용된 경우 할인 후 실제 결제 금액)
 - store: 상호명
 - category: 분류 (식료품/사무용품/시설관리/경조사/기타 중 하나)
+- note: 비고 (할인, 부가세, 특이사항 등. 없으면 빈 문자열)
+
+중요: 할인이 있는 경우 amount는 할인 적용 후 실제 결제 금액을 기록하고, note에 "할인 -1,200원" 처럼 할인 내역을 기록하세요.
 
 반드시 유효한 JSON 배열만 출력하세요. 다른 텍스트는 포함하지 마세요.
-예: [{"date":"2026-01-15","item":"쌀","quantity":"1","unitPrice":"50000","amount":"50000","store":"농협마트","category":"식료품"}]`,
+예: [{"date":"2026-01-15","item":"쌀","quantity":"1","unitPrice":"50000","amount":"50000","store":"농협마트","category":"식료품","note":""},{"date":"2026-01-15","item":"두부","quantity":"2","unitPrice":"3000","amount":"4800","store":"농협마트","category":"식료품","note":"할인 -1,200원"}]`,
             messages: [{
               role: 'user',
               content: [
@@ -90,10 +94,10 @@ export default function ReceiptPage({ params }: { params: { id: string } }) {
   };
 
   const downloadCSV = () => {
-    const header = '날짜,품목,수량,단가,금액,상호,분류';
-    const csvRows = rows.map((r) => `${r.date},${r.item},${r.quantity},${r.unitPrice},${r.amount},${r.store},${r.category}`);
+    const header = '날짜,품목,수량,단가,금액,상호,분류,비고';
+    const csvRows = rows.map((r) => `${r.date},${r.item},${r.quantity},${r.unitPrice},${r.amount},${r.store},${r.category},${r.note || ''}`);
     const bom = '﻿';
-    const csv = bom + [header, ...csvRows, `,,,,${totalAmount},합계,`].join('\n');
+    const csv = bom + [header, ...csvRows, `,,,,${totalAmount},합계,,`].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -161,6 +165,7 @@ export default function ReceiptPage({ params }: { params: { id: string } }) {
                     <th className="py-2 px-2 text-right font-medium text-[var(--color-text-secondary)]">금액</th>
                     <th className="py-2 px-2 text-left font-medium text-[var(--color-text-secondary)]">상호</th>
                     <th className="py-2 px-2 text-left font-medium text-[var(--color-text-secondary)]">분류</th>
+                    <th className="py-2 px-2 text-left font-medium text-[var(--color-text-secondary)]">비고</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -173,12 +178,13 @@ export default function ReceiptPage({ params }: { params: { id: string } }) {
                       <td className="py-2 px-2 text-right font-medium">{parseInt(r.amount).toLocaleString()}</td>
                       <td className="py-2 px-2">{r.store}</td>
                       <td className="py-2 px-2"><span className="px-2 py-0.5 rounded-full bg-primary-light text-primary text-xs">{r.category}</span></td>
+                      <td className="py-2 px-2 text-xs text-[var(--color-text-secondary)]">{r.note && <span className={r.note.includes('할인') ? 'text-red-500 font-medium' : ''}>{r.note}</span>}</td>
                     </tr>
                   ))}
                   <tr className="font-bold">
                     <td colSpan={4} className="py-3 px-2 text-right">합계</td>
                     <td className="py-3 px-2 text-right text-primary">{totalAmount.toLocaleString()}원</td>
-                    <td colSpan={2} />
+                    <td colSpan={3} />
                   </tr>
                 </tbody>
               </table>
