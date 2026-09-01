@@ -204,8 +204,37 @@ function replaceCellText(cell: string, textTag: string, value: string, format: T
     replaced = true;
     return `${open}${escaped}${close}`;
   });
+  // 완전히 빈 HWPX/DOCX 셀에는 기존 hp:t/w:t가 없다. 이 경우 새 실행 단위를
+  // 만들어야 대표자·연락처처럼 빈칸으로 설계된 항목에도 실제 값이 들어간다.
+  if (!replaced && value) {
+    updated = format === 'hwpx'
+      ? insertHwpCellText(cell, escaped, sourceStyle)
+      : format === 'docx'
+        ? insertDocxCellText(cell, escaped)
+        : cell;
+    replaced = updated !== cell;
+  }
   if (format === 'hwpx' && sourceStyle && replaced) updated = applyHwpRunStyle(updated, sourceStyle);
   return updated;
+}
+
+function insertHwpCellText(cell: string, escapedText: string, charPrIDRef?: string) {
+  const run = `<hp:run${charPrIDRef ? ` charPrIDRef="${charPrIDRef}"` : ''}><hp:t>${escapedText}</hp:t></hp:run>`;
+  // 빈 셀에 이미 문단이 있으면 그 문단의 맨 앞에 실행 단위를 넣어 문단/셀 서식을 유지한다.
+  if (/<hp:p\b[^>]*>/i.test(cell)) return cell.replace(/(<hp:p\b[^>]*>)/i, `$1${run}`);
+  // 문단까지 없는 드문 셀도 subList 안에 최소 문단을 생성한다.
+  if (/<hp:subList\b[^>]*>/i.test(cell)) {
+    return cell.replace(/(<hp:subList\b[^>]*>)/i, `$1<hp:p id="0" paraPrIDRef="0" styleIDRef="0"><hp:run${charPrIDRef ? ` charPrIDRef="${charPrIDRef}"` : ''}><hp:t>${escapedText}</hp:t></hp:run></hp:p>`);
+  }
+  return cell;
+}
+
+function insertDocxCellText(cell: string, escapedText: string) {
+  const run = `<w:r><w:t>${escapedText}</w:t></w:r>`;
+  if (/<w:p\b[^>]*>/i.test(cell)) return cell.replace(/(<w:p\b[^>]*>)/i, `$1${run}`);
+  const paragraph = `<w:p>${run}</w:p>`;
+  if (/<w:tcPr\b[^>]*>[\s\S]*?<\/w:tcPr>/i.test(cell)) return cell.replace(/(<w:tcPr\b[^>]*>[\s\S]*?<\/w:tcPr>)/i, `$1${paragraph}`);
+  return cell.replace(/(<w:tc\b[^>]*>)/i, `$1${paragraph}`);
 }
 
 function getHwpRunStyle(cell: string | undefined) {
