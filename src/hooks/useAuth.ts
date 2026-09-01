@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth';
-import { onAuthChange, getUserProfile, signInWithGoogle, signOut } from '@/lib/firebase/auth';
+import { onAuthChange, getUserProfile, signInWithGoogle, signOut, handleRedirectResult } from '@/lib/firebase/auth';
 import type { User } from '@/types/user';
 
 interface AuthState {
@@ -20,6 +20,7 @@ export function useAuthProvider(): AuthState {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    handleRedirectResult().catch(() => {});
     const unsubscribe = onAuthChange(async (fbUser) => {
       setFirebaseUser(fbUser);
       if (fbUser) {
@@ -34,9 +35,16 @@ export function useAuthProvider(): AuthState {
   }, []);
 
   const login = useCallback(async () => {
-    const fbUser = await signInWithGoogle();
-    const profile = await getUserProfile(fbUser.uid);
-    setUser(profile);
+    try {
+      const fbUser = await signInWithGoogle();
+      setFirebaseUser(fbUser);
+      const profile = await getUserProfile(fbUser.uid);
+      setUser(profile);
+    } catch (err) {
+      if (err instanceof Error && err.message === 'redirect') return;
+      console.error('Login failed:', err);
+      alert('로그인에 실패했습니다. 다시 시도해주세요.');
+    }
   }, []);
 
   const logout = useCallback(async () => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CheckSquare, ClipboardList, Newspaper, Star, Users, Wallet } from 'lucide-react';
 import { Header } from '@/components/common/Header';
 import { BottomTabBar } from '@/components/common/BottomTabBar';
@@ -20,8 +20,8 @@ import { formatCurrency } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import type { DashboardStats, Post, VillageDocument } from '@/types/feed';
 
-export default function DashboardPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function DashboardPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const { user } = useAuth();
   const [villageName, setVillageName] = useState('내 마을');
   const [stats, setStats] = useState<DashboardStats>(MOCK_STATS);

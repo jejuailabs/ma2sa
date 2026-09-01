@@ -9,10 +9,10 @@ import { Avatar } from './Avatar';
 
 const NAV_ITEMS = [
   { label: '마을 소식', href: '/#feed' },
-  { label: '이벤트', href: '/#events' },
-  { label: '마을 특산품', href: '/#products' },
-  { label: '소개', href: '/about' },
-  { label: '이용안내', href: '/guide' },
+  { label: '이벤트', href: '/#feed-events' },
+  { label: '마을 특산품', href: '/#feed-products' },
+  { label: '소개', href: '/#hero' },
+  { label: '이용안내', href: '/#guide' },
 ];
 
 export function Header() {

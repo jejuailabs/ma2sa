@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { Header } from '@/components/common/Header';
@@ -12,8 +12,8 @@ import { AccessGuard } from '@/components/auth/AccessGuard';
 import { usePosts } from '@/hooks/usePosts';
 import { getVillage } from '@/lib/firebase/firestore';
 
-export default function VillageFeedPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function VillageFeedPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const [activeTab, setActiveTab] = useState<CategoryTab>('news');
   const [villageName, setVillageName] = useState('내 마을');
   const { posts, loading, error, reload } = usePosts({ villageId: id, type: activeTab });
