@@ -22,8 +22,13 @@ export function usePosts({ villageId, type }: { villageId?: string; type?: PostT
         setPosts((await getPublicPosts(type)).posts);
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '소식을 불러오지 못했습니다.');
-      setPosts([]);
+      const msg = cause instanceof Error ? cause.message : '';
+      if (msg.includes('permission') || msg.includes('Missing')) {
+        setPosts([]);
+      } else {
+        setError(msg || '소식을 불러오지 못했습니다.');
+        setPosts([]);
+      }
     } finally { setLoading(false); }
   }, [type, villageId]);
 

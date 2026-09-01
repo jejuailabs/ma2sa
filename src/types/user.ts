@@ -28,6 +28,7 @@ export interface User {
   photoURL: string;
   villageId: string | null;
   role: UserRole;
+  isSiteAdmin?: boolean;
   createdAt: Date;
   lastLoginAt: Date;
   settings: {

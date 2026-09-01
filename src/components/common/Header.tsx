@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, Bell, Home } from 'lucide-react';
+import { Menu, X, Bell, Home, Shield } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from './ThemeToggle';
 import { Avatar } from './Avatar';
 import { isOfficialRole } from '@/types/user';
+import { getSiteConfig } from '@/lib/firebase/admin';
 
 const NAV_ITEMS = [
   { label: '마을 소식', href: '/#feed' },
@@ -20,6 +21,11 @@ export function Header() {
   const { user, login, logout, loading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [logoText, setLogoText] = useState('마을AI사무장');
+
+  useEffect(() => {
+    getSiteConfig().then((c) => setLogoText(c.logoText)).catch(() => {});
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 bg-[var(--color-bg)] border-b border-[var(--color-border)] transition-colors duration-300">
@@ -27,7 +33,7 @@ export function Header() {
       <div className="hidden md:flex items-center justify-between max-w-content mx-auto px-6 h-16">
         <Link href="/" className="flex items-center gap-2 text-primary font-bold text-xl">
           <Home className="w-6 h-6" />
-          <span>마을AI사무장</span>
+          <span>{logoText}</span>
         </Link>
 
         <nav className="flex items-center gap-8">
@@ -62,6 +68,11 @@ export function Header() {
                       업무모드 전환
                     </Link>
                   )}
+                  {user.isSiteAdmin && (
+                    <Link href="/admin" className="flex items-center gap-2 px-4 py-2 text-sm text-primary hover:bg-[var(--color-surface)]" onClick={() => setProfileMenuOpen(false)}>
+                      <Shield className="w-3.5 h-3.5" /> 관리자
+                    </Link>
+                  )}
                   <button onClick={() => { logout(); setProfileMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-error hover:bg-[var(--color-surface)]">
                     로그아웃
                   </button>
@@ -86,7 +97,7 @@ export function Header() {
         <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-[var(--color-text)]">
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
-        <span className="font-semibold text-[var(--color-text)]">Home</span>
+        <span className="font-semibold text-[var(--color-text)]">{logoText}</span>
         <button className="p-2 text-[var(--color-text)]">
           <Bell className="w-6 h-6" />
         </button>
@@ -105,6 +116,11 @@ export function Header() {
               {item.label}
             </Link>
           ))}
+          {user?.isSiteAdmin && (
+            <Link href="/admin" className="flex items-center gap-2 py-2 text-sm text-primary font-medium" onClick={() => setMobileMenuOpen(false)}>
+              <Shield className="w-4 h-4" /> 관리자
+            </Link>
+          )}
           <div className="flex items-center justify-between pt-3 border-t border-[var(--color-border)]">
             <ThemeToggle />
             {user ? (

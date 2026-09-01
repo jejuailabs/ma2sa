@@ -5,21 +5,34 @@ service cloud.firestore {
     function userData() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
     function memberOf(villageId) { return signedIn() && userData().villageId == villageId; }
     function adminOf(villageId) { return memberOf(villageId) && userData().role in ['leader', 'secretary']; }
+    function isSiteAdmin() { return signedIn() && userData().isSiteAdmin == true; }
 
     match /users/{uid} {
       allow create: if signedIn() && request.auth.uid == uid && request.resource.data.role == 'member' && request.resource.data.villageId == null;
-      allow read: if signedIn() && (request.auth.uid == uid || adminOf(resource.data.villageId));
-      allow update: if signedIn() && request.auth.uid == uid
+      allow read: if signedIn() && (request.auth.uid == uid || adminOf(resource.data.villageId) || isSiteAdmin());
+      allow update: if signedIn() && (request.auth.uid == uid || isSiteAdmin())
         && (request.resource.data.role == resource.data.role
           || request.resource.data.role in ['member', 'leader', 'secretary', 'women_leader', 'youth_leader', 'elder']);
+      allow list: if isSiteAdmin();
+    }
+
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if isSiteAdmin();
+    }
+
+    match /aiLogs/{logId} {
+      allow read: if isSiteAdmin();
+      allow create: if signedIn();
     }
 
     match /villages/{villageId} {
-      allow read: if resource.data.settings.isPublic == true || memberOf(villageId);
+      allow read: if resource.data.settings.isPublic == true || memberOf(villageId) || isSiteAdmin();
       allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
-      allow update: if adminOf(villageId)
+      allow update: if adminOf(villageId) || isSiteAdmin()
         || (signedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount']));
-      allow delete: if signedIn() && resource.data.createdBy == request.auth.uid;
+      allow delete: if signedIn() && (resource.data.createdBy == request.auth.uid || isSiteAdmin());
+      allow list: if isSiteAdmin();
 
       match /members/{uid} {
         allow read: if memberOf(villageId) || request.auth.uid == uid;
