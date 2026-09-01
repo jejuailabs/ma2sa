@@ -77,3 +77,18 @@ export interface DashboardStats {
   todos: number;
   balance: number;
 }
+
+export type AITaskType = 'announcement' | 'receipt' | 'format' | 'transcribe' | 'narration';
+
+export interface AITask {
+  id: string;
+  villageId: string;
+  type: AITaskType;
+  title: string;
+  inputText: string;
+  inputImages: string[];
+  outputText: string;
+  outputData: unknown;
+  createdBy: string;
+  createdAt: Date;
+}

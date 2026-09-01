@@ -3,6 +3,8 @@
 import { useState, useRef } from 'react';
 import { Volume2, Loader2, Play, Pause, Download, RefreshCw, Square } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
+import { saveAITask } from '@/lib/firebase/firestore';
+import { useAuth } from '@/hooks/useAuth';
 
 const SAMPLE_TEXT = '안녕하십니까, 마을 주민 여러분. 오늘 날씨가 좋습니다.';
 
@@ -23,6 +25,7 @@ const PRESETS = [
 
 export default function NarrationPage({ params }: { params: { id: string } }) {
   const { id } = params;
+  const { user } = useAuth();
   const audioRef = useRef<HTMLAudioElement>(null);
   const previewAudioRef = useRef<HTMLAudioElement>(null);
   const [text, setText] = useState('');
@@ -126,6 +129,17 @@ export default function NarrationPage({ params }: { params: { id: string } }) {
       const blob = new Blob([arr], { type: 'audio/mp3' });
       const url = URL.createObjectURL(blob);
       setAudioUrl(url);
+      try {
+        await saveAITask(id, {
+          type: 'narration',
+          title: `나레이션 생성 (${VOICES.find((v) => v.value === voice)?.label || voice})`,
+          inputText: text,
+          inputImages: [],
+          outputText: `음성 생성 완료 — 목소리: ${VOICES.find((v) => v.value === voice)?.label}, 속도: ${speed}x`,
+          outputData: null,
+          createdBy: user?.uid || '',
+        });
+      } catch {}
     } catch (e) {
       setError(e instanceof Error ? e.message : '음성 생성에 실패했습니다.');
     } finally {

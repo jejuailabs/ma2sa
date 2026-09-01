@@ -3,6 +3,8 @@
 import { useState, useRef } from 'react';
 import { Receipt, ImagePlus, Loader2, Download, Plus, Trash2 } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
+import { saveAITask } from '@/lib/firebase/firestore';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ReceiptRow {
   date: string;
@@ -17,6 +19,7 @@ interface ReceiptRow {
 
 export default function ReceiptPage({ params }: { params: { id: string } }) {
   const { id } = params;
+  const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<{ file: File; preview: string }[]>([]);
   const [rows, setRows] = useState<ReceiptRow[]>([]);
@@ -86,6 +89,9 @@ export default function ReceiptPage({ params }: { params: { id: string } }) {
 
       setRows(allRows);
       setTotalAmount(allRows.reduce((sum, r) => sum + (parseInt(r.amount) || 0), 0));
+      try {
+        await saveAITask(id, { type: 'receipt', title: `영수증 분석 (${files.length}장, ${allRows.length}건)`, inputText: '', inputImages: files.map((f) => f.preview), outputText: '', outputData: allRows, createdBy: user?.uid || '' });
+      } catch {}
     } catch (e) {
       setError(e instanceof Error ? e.message : '분석에 실패했습니다.');
     } finally {

@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 const TABS = [
   { icon: Home, label: '홈', href: '/' },
-  { icon: FileText, label: '문서함', href: '/village/docs' },
+  { icon: FileText, label: 'AI업무', href: '/village/docs' },
   { icon: Search, label: '검색', href: '/search' },
   { icon: User, label: '마이', href: '/mypage' },
 ];

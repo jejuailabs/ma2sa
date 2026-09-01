@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Users, Search, Loader2, Shield, UserCheck, UserX, Mail } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { isFirebaseConfigured, db } from '@/lib/firebase/config';
-import { collection, query, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
 
 interface Member {
   uid: string;
@@ -17,6 +17,8 @@ interface Member {
 
 const ROLE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   admin: { label: '이장/사무장', color: 'text-primary', bg: 'bg-primary-light' },
+  leader: { label: '이장/사무장', color: 'text-primary', bg: 'bg-primary-light' },
+  secretary: { label: '사무장', color: 'text-primary', bg: 'bg-primary-light' },
   member: { label: '주민', color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-500/10' },
   pending: { label: '승인 대기', color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-500/10' },
 };
@@ -31,18 +33,36 @@ export default function MembersPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     if (!isFirebaseConfigured || !db) { setLoading(false); return; }
     getDocs(query(collection(db, 'villages', id, 'members')))
-      .then((snap) => {
-        setMembers(snap.docs.map((d) => {
+      .then(async (snap) => {
+        const memberList: Member[] = [];
+        for (const d of snap.docs) {
           const data = d.data();
-          return {
+          let displayName = data.displayName || '';
+          let email = data.email || '';
+          let photoURL = data.photoURL || '';
+
+          if (!displayName || !email) {
+            try {
+              const userDoc = await getDoc(doc(db!, 'users', d.id));
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
+                if (!displayName) displayName = userData.displayName || userData.name || '';
+                if (!email) email = userData.email || '';
+                if (!photoURL) photoURL = userData.photoURL || '';
+              }
+            } catch {}
+          }
+
+          memberList.push({
             uid: d.id,
-            displayName: data.displayName ?? '이름 없음',
-            email: data.email ?? '',
-            photoURL: data.photoURL,
+            displayName: displayName || '이름 없음',
+            email,
+            photoURL: photoURL || undefined,
             role: data.role ?? 'member',
             joinedAt: data.joinedAt?.toDate?.() ?? new Date(),
-          };
-        }));
+          });
+        }
+        setMembers(memberList);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -65,7 +85,11 @@ export default function MembersPage({ params }: { params: { id: string } }) {
   };
 
   const filtered = members
-    .filter((m) => filter === 'all' || m.role === filter)
+    .filter((m) => {
+      if (filter === 'all') return true;
+      if (filter === 'admin') return ['admin', 'leader', 'secretary'].includes(m.role);
+      return m.role === filter;
+    })
     .filter((m) => !searchText || m.displayName.includes(searchText) || m.email.includes(searchText));
 
   const pendingCount = members.filter((m) => m.role === 'pending').length;
@@ -130,10 +154,12 @@ export default function MembersPage({ params }: { params: { id: string } }) {
                       <p className="text-sm font-medium truncate">{m.displayName}</p>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${roleCfg.color} ${roleCfg.bg}`}>{roleCfg.label}</span>
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <Mail className="w-3 h-3 text-[var(--color-text-secondary)]" />
-                      <span className="text-xs text-[var(--color-text-secondary)] truncate">{m.email}</span>
-                    </div>
+                    {m.email && (
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Mail className="w-3 h-3 text-[var(--color-text-secondary)]" />
+                        <span className="text-xs text-[var(--color-text-secondary)] truncate">{m.email}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-1 shrink-0">
                     {m.role === 'pending' && (

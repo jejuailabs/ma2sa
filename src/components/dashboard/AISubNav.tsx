@@ -15,7 +15,7 @@ const AI_TABS = [
   { icon: FileText, label: '양식 변환', path: '/ai/format', color: 'bg-purple-500', light: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/30' },
   { icon: Mic, label: '회의록 정리', path: '/ai/transcribe', color: 'bg-orange-500', light: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/20 dark:text-orange-300 dark:border-orange-500/30' },
   { icon: Volume2, label: '대신 읽어주기', path: '/ai/narration', color: 'bg-pink-500', light: 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-500/20 dark:text-pink-300 dark:border-pink-500/30' },
-  { icon: FolderOpen, label: '문서함', path: '/docs', color: 'bg-gray-500', light: 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-500/20 dark:text-gray-300 dark:border-gray-500/30' },
+  { icon: FolderOpen, label: 'AI 업무 목록', path: '/docs', color: 'bg-gray-500', light: 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-500/20 dark:text-gray-300 dark:border-gray-500/30' },
 ];
 
 export function AISubNav({ villageId }: AISubNavProps) {

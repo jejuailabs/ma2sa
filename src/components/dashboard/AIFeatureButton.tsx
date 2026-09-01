@@ -19,7 +19,7 @@ const AI_FEATURES: AIFeatureItem[] = [
   { icon: FileText, label: '문서 양식 변환', description: '초안을 공문서로 변환', href: 'format', color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-500/10' },
   { icon: Mic, label: '회의록 자동 정리', description: '녹음에서 결정사항 추출', href: 'transcribe', color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-500/10' },
   { icon: Volume2, label: '대신 읽어주기', description: '방송용 음성 만들기', href: 'narration', color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-500/10' },
-  { icon: FolderOpen, label: '마을 문서함', description: '생성 문서 한곳에 보관', href: '../docs', color: 'text-gray-600', bg: 'bg-gray-100 dark:bg-gray-500/10' },
+  { icon: FolderOpen, label: 'AI 업무 목록', description: '작업 이력 한눈에 보기', href: '../docs', color: 'text-gray-600', bg: 'bg-gray-100 dark:bg-gray-500/10' },
 ];
 
 interface AIFeatureButtonProps {

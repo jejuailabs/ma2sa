@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  BarChart3, Bot, FileText, FolderOpen, Home, Newspaper, Settings, Users, Wallet, Calendar,
+  BarChart3, Bot, ClipboardList, Globe, Home, Newspaper, Settings, Users, Wallet, Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -18,7 +18,7 @@ const MAIN_MENU = [
   { icon: Newspaper, label: '마을 소식', path: '/feed' },
   { icon: Users, label: '마을 주민', path: '/members' },
   { icon: Calendar, label: '일정 관리', path: '/schedule' },
-  { icon: FolderOpen, label: '문서함', path: '/docs' },
+  { icon: ClipboardList, label: 'AI 업무 목록', path: '/docs' },
   { icon: Wallet, label: '자금 관리', path: '/finance' },
   { icon: Bot, label: 'AI 업무', path: '/ai' },
 ];
@@ -27,20 +27,20 @@ const MANAGE_MENU = [
   { icon: Settings, label: '설정', path: '/settings' },
 ];
 
-export function SidebarMenu({ villageId, villageName = '금성리 마을' }: SidebarMenuProps) {
+export function SidebarMenu({ villageId, villageName = '내 마을' }: SidebarMenuProps) {
   const pathname = usePathname();
   const basePath = `/village/${villageId}`;
 
   return (
     <aside className="hidden lg:flex flex-col w-56 shrink-0 h-screen sticky top-0 bg-sidebar text-sidebar-text">
-      {/* Logo */}
-      <div className="px-5 pt-6 pb-5">
+      {/* Logo - links to main */}
+      <Link href="/" className="block px-5 pt-6 pb-5 hover:opacity-80 transition-opacity">
         <div className="flex items-center gap-2">
           <Home className="w-5 h-5" />
           <span className="font-bold text-base">마을AI사무장</span>
         </div>
         <p className="text-xs text-sidebar-text/60 mt-1">{villageName} 업무모드</p>
-      </div>
+      </Link>
 
       {/* Main menu */}
       <nav className="flex-1 px-3">
@@ -86,6 +86,14 @@ export function SidebarMenu({ villageId, villageName = '금성리 마을' }: Sid
             </Link>
           );
         })}
+
+        {/* 메인 화면 바로가기 */}
+        <div className="mt-4 px-3">
+          <Link href="/" className="flex items-center gap-2 text-xs text-sidebar-text/50 hover:text-sidebar-text/80 transition-colors">
+            <Globe className="w-3.5 h-3.5" />
+            메인 화면으로
+          </Link>
+        </div>
       </nav>
     </aside>
   );

@@ -10,7 +10,7 @@ const AI_FEATURES = [
   { icon: FileText, label: '텍스트→양식 변환', description: '텍스트를 입력하면 정해진 공식 양식으로 자동 변환됩니다', href: 'format', color: 'text-purple-500', bg: 'bg-purple-50 dark:bg-purple-500/10' },
   { icon: Mic, label: '회의록 자동 정리', description: '녹음 파일을 업로드하면 AI가 회의록을 자동 정리합니다', href: 'transcribe', color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-500/10' },
   { icon: Volume2, label: '대신 읽어주기', description: '마을 방송용 텍스트를 AI 나레이션 음성으로 생성합니다', href: 'narration', color: 'text-pink-500', bg: 'bg-pink-50 dark:bg-pink-500/10' },
-  { icon: FolderOpen, label: '마을 문서함', description: 'AI로 생성된 모든 문서를 통합 관리합니다', href: '../docs', color: 'text-secondary', bg: 'bg-secondary-light' },
+  { icon: FolderOpen, label: 'AI 업무 목록', description: 'AI 작업 이력과 결과물을 통합 관리합니다', href: '../docs', color: 'text-secondary', bg: 'bg-secondary-light' },
 ];
 
 export default function AIHubPage({ params }: { params: { id: string } }) {

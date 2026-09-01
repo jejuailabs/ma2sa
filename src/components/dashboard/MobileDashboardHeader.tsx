@@ -16,7 +16,7 @@ const MENU_ITEMS = [
   { icon: Newspaper, label: '마을 소식', path: '/feed' },
   { icon: Users, label: '마을 주민', path: '/members' },
   { icon: Calendar, label: '일정 관리', path: '/schedule' },
-  { icon: FolderOpen, label: '문서함', path: '/docs' },
+  { icon: FolderOpen, label: 'AI 업무 목록', path: '/docs' },
   { icon: Wallet, label: '자금 관리', path: '/finance' },
   { icon: Settings, label: '설정', path: '/settings' },
 ];

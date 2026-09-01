@@ -1,13 +1,19 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Mic, Loader2, Copy, Check, Download, Upload } from 'lucide-react';
+import { Mic, Loader2, Copy, Check, Download, Upload, Play, Pause } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
+import { saveAITask } from '@/lib/firebase/firestore';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function TranscribePage({ params }: { params: { id: string } }) {
   const { id } = params;
+  const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [audioUrl, setAudioUrl] = useState('');
+  const [playing, setPlaying] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [summary, setSummary] = useState('');
   const [step, setStep] = useState<'upload' | 'transcript' | 'result'>('upload');
@@ -21,6 +27,15 @@ export default function TranscribePage({ params }: { params: { id: string } }) {
     setTranscript('');
     setSummary('');
     setStep('upload');
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+    setAudioUrl(URL.createObjectURL(f));
+    setPlaying(false);
+  };
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (playing) { audioRef.current.pause(); } else { audioRef.current.play(); }
+    setPlaying(!playing);
   };
 
   const transcribeAudio = async () => {
@@ -90,6 +105,17 @@ export default function TranscribePage({ params }: { params: { id: string } }) {
       if (data.error) throw new Error(data.error);
       setSummary(data.text);
       setStep('result');
+      try {
+        await saveAITask(id, {
+          type: 'transcribe',
+          title: `회의록 정리${file ? ` (${file.name})` : ''}`,
+          inputText: transcript,
+          inputImages: [],
+          outputText: data.text,
+          outputData: null,
+          createdBy: user?.uid || '',
+        });
+      } catch {}
     } catch (e) {
       setError(e instanceof Error ? e.message : '정리에 실패했습니다.');
     } finally {
@@ -149,11 +175,20 @@ export default function TranscribePage({ params }: { params: { id: string } }) {
               </div>
 
               {file && (
-                <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-surface)]">
-                  <span className="text-sm truncate">{file.name}</span>
-                  <button onClick={transcribeAudio} disabled={loading} className="px-4 py-1.5 rounded-lg bg-primary text-white text-sm disabled:opacity-50">
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : '다음'}
-                  </button>
+                <div className="p-3 rounded-lg bg-[var(--color-surface)] space-y-3">
+                  <div className="flex items-center gap-3">
+                    <button onClick={togglePlay} className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shrink-0 hover:opacity-90">
+                      {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{file.name}</p>
+                      <p className="text-xs text-[var(--color-text-secondary)]">{(file.size / 1024 / 1024).toFixed(1)}MB</p>
+                    </div>
+                    <button onClick={transcribeAudio} disabled={loading} className="px-4 py-1.5 rounded-lg bg-primary text-white text-sm disabled:opacity-50 shrink-0">
+                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : '다음'}
+                    </button>
+                  </div>
+                  <audio ref={audioRef} src={audioUrl} onEnded={() => setPlaying(false)} className="w-full h-8" controls />
                 </div>
               )}
             </>

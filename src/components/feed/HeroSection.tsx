@@ -1,8 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { useAuth } from '@/hooks/useAuth';
 
 export function HeroSection() {
+  const { user } = useAuth();
+
   return (
     <section className="rounded-2xl overflow-hidden mb-8 bg-gradient-to-br from-primary-dark via-primary to-accent text-white p-8 sm:p-10 relative">
       <div className="absolute inset-0 opacity-10">
@@ -21,12 +24,21 @@ export function HeroSection() {
         <p className="text-sm sm:text-base text-white/70 mb-6">
           전국 마을의 이야기와 행사, 정성껏 기른 특산품을 만나보세요.
         </p>
-        <Link
-          href="/village/setup"
-          className="inline-flex items-center gap-1 px-5 py-2.5 bg-white text-primary font-medium text-sm rounded-full hover:bg-white/90 transition-colors"
-        >
-          우리 마을 시작하기 &rsaquo;
-        </Link>
+        {user?.villageId ? (
+          <Link
+            href={`/village/${user.villageId}`}
+            className="inline-flex items-center gap-1 px-5 py-2.5 bg-white text-primary font-medium text-sm rounded-full hover:bg-white/90 transition-colors"
+          >
+            내 마을 들어가기 &rsaquo;
+          </Link>
+        ) : (
+          <Link
+            href="/village/setup"
+            className="inline-flex items-center gap-1 px-5 py-2.5 bg-white text-primary font-medium text-sm rounded-full hover:bg-white/90 transition-colors"
+          >
+            우리 마을 시작하기 &rsaquo;
+          </Link>
+        )}
       </div>
     </section>
   );

@@ -3,9 +3,12 @@
 import { useState, useRef } from 'react';
 import { FileText, Loader2, Copy, Check, Download, Upload, Eye, X, ImagePlus, FileUp } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
+import { saveAITask } from '@/lib/firebase/firestore';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function FormatPage({ params }: { params: { id: string } }) {
   const { id } = params;
+  const { user } = useAuth();
   const sourceFileRef = useRef<HTMLInputElement>(null);
   const templateFileRef = useRef<HTMLInputElement>(null);
 
@@ -107,6 +110,17 @@ export default function FormatPage({ params }: { params: { id: string } }) {
       const data = await response.json();
       if (data.error) throw new Error(data.error);
       setResult(data.text);
+      try {
+        await saveAITask(id, {
+          type: 'format',
+          title: `양식 변환${templateFile ? ` (${templateFile.name})` : ''}`,
+          inputText: sourceText,
+          inputImages: sourcePreview ? [sourcePreview] : [],
+          outputText: data.text,
+          outputData: null,
+          createdBy: user?.uid || '',
+        });
+      } catch {}
     } catch (e) {
       setError(e instanceof Error ? e.message : '변환에 실패했습니다.');
     } finally {

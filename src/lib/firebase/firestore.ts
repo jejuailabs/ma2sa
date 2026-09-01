@@ -5,7 +5,7 @@ import {
   type DocumentData, type DocumentSnapshot, type QueryConstraint, type Timestamp, type Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './config';
-import type { DashboardStats, DocumentType, Finance, Post, PostType, Todo, VillageDocument } from '@/types/feed';
+import type { AITask, AITaskType, DashboardStats, DocumentType, Finance, Post, PostType, Todo, VillageDocument } from '@/types/feed';
 import type { UserRole } from '@/types/user';
 import type { Village } from '@/types/village';
 
@@ -82,10 +82,15 @@ export async function searchVillages(searchQuery: string): Promise<Village[]> {
 
 export async function createVillage(data: Omit<Village, 'id' | 'createdAt' | 'memberCount'>, uid: string): Promise<string> {
   if (!db) throw new Error('Firebase가 설정되지 않았습니다.');
+  const userSnap = await getDoc(doc(db, 'users', uid));
+  const userData = userSnap.data() ?? {};
   const villageRef = doc(collection(db, 'villages'));
   const batch = writeBatch(db);
   batch.set(villageRef, { ...data, createdBy: uid, memberCount: 1, createdAt: serverTimestamp() });
-  batch.set(doc(db, 'villages', villageRef.id, 'members', uid), { uid, role: 'leader', status: 'active', joinedAt: serverTimestamp() });
+  batch.set(doc(db, 'villages', villageRef.id, 'members', uid), {
+    uid, role: 'leader', status: 'active', joinedAt: serverTimestamp(),
+    displayName: userData.displayName || '', email: userData.email || '', photoURL: userData.photoURL || '',
+  });
   batch.update(doc(db, 'users', uid), { villageId: villageRef.id, role: 'leader' });
   await batch.commit();
   return villageRef.id;
@@ -97,8 +102,13 @@ export async function joinVillage(villageId: string, uid: string): Promise<'acti
   const village = await getDoc(villageRef);
   if (!village.exists()) throw new Error('마을을 찾을 수 없습니다.');
   const status = village.data().settings?.requireApproval ? 'pending' : 'active';
+  const userSnap = await getDoc(doc(db, 'users', uid));
+  const userData = userSnap.data() ?? {};
   const batch = writeBatch(db);
-  batch.set(doc(db, 'villages', villageId, 'members', uid), { uid, role: 'member', status, joinedAt: serverTimestamp() });
+  batch.set(doc(db, 'villages', villageId, 'members', uid), {
+    uid, role: 'member', status, joinedAt: serverTimestamp(),
+    displayName: userData.displayName || '', email: userData.email || '', photoURL: userData.photoURL || '',
+  });
   if (status === 'active') {
     batch.update(doc(db, 'users', uid), { villageId, role: 'member' });
     batch.update(villageRef, { memberCount: increment(1) });
@@ -190,6 +200,28 @@ export async function saveAIResultAsDocument(villageId: string, uid: string, dat
   const text = [data.title, '', data.summary, '', data.content].join('\n');
   const fileURL = `data:text/plain;charset=utf-8,${encodeURIComponent(text)}`;
   return saveVillageDocument(villageId, { type: data.documentType, title: data.title, description: data.summary, fileURL, thumbnailURL: '', fileSize: new Blob([text]).size, mimeType: 'text/plain', createdBy: uid, aiGenerated: true, metadata: data.metadata });
+}
+
+export async function saveAITask(villageId: string, data: Omit<AITask, 'id' | 'villageId' | 'createdAt'>): Promise<string> {
+  if (!db) throw new Error('Firebase가 설정되지 않았습니다.');
+  const ref = await addDoc(collection(db, 'villages', villageId, 'aiTasks'), { ...data, villageId, createdAt: serverTimestamp() });
+  return ref.id;
+}
+
+export async function listAITasks(villageId: string, type?: AITaskType): Promise<AITask[]> {
+  if (!db) return [];
+  const constraints: QueryConstraint[] = [orderBy('createdAt', 'desc'), limit(50)];
+  if (type) constraints.unshift(where('type', '==', type));
+  const snapshot = await getDocs(query(collection(db, 'villages', villageId, 'aiTasks'), ...constraints));
+  return snapshot.docs.map((d) => {
+    const data = d.data();
+    return { ...data, id: d.id, createdAt: asDate(data.createdAt) } as AITask;
+  });
+}
+
+export async function deleteAITask(villageId: string, taskId: string) {
+  if (!db) throw new Error('Firebase가 설정되지 않았습니다.');
+  await deleteDoc(doc(db, 'villages', villageId, 'aiTasks', taskId));
 }
 
 export async function putUserProfile(uid: string, data: Record<string, unknown>) {

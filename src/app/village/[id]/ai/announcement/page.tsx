@@ -1,14 +1,21 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { FileSearch, ImagePlus, Loader2, Copy, Check } from 'lucide-react';
+import { FileSearch, Upload, Loader2, Copy, Check, X, FileText } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
+import { saveAITask } from '@/lib/firebase/firestore';
+import { useAuth } from '@/hooks/useAuth';
+
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const PDF_TYPE = 'application/pdf';
 
 export default function AnnouncementPage({ params }: { params: { id: string } }) {
   const { id } = params;
+  const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState('');
+  const [textInput, setTextInput] = useState('');
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -18,25 +25,51 @@ export default function AnnouncementPage({ params }: { params: { id: string } })
     setFile(f);
     setResult('');
     setError('');
-    if (f.type.startsWith('image/')) {
+    if (IMAGE_TYPES.includes(f.type)) {
       const reader = new FileReader();
       reader.onload = () => setPreview(reader.result as string);
       reader.readAsDataURL(f);
+    } else if (f.type === 'text/plain' || f.name.endsWith('.txt')) {
+      setPreview('');
+      const reader = new FileReader();
+      reader.onload = () => setTextInput(reader.result as string);
+      reader.readAsText(f);
+    } else if (f.type === PDF_TYPE || f.name.endsWith('.pdf')) {
+      setPreview('');
     } else {
       setPreview('');
+      setError(`${f.name} 파일은 직접 분석이 어렵습니다. 파일 내용을 복사해서 위 텍스트 입력란에 붙여넣기 해주세요.`);
+      setFile(null);
     }
   };
 
   const analyze = async () => {
-    if (!file) return;
+    if (!file && !textInput.trim()) { setError('분석할 내용을 입력하거나 파일을 첨부해주세요.'); return; }
     setLoading(true);
     setError('');
     try {
-      const base64 = await new Promise<string>((res) => {
-        const reader = new FileReader();
-        reader.onload = () => res((reader.result as string).split(',')[1]);
-        reader.readAsDataURL(file);
-      });
+      const contentParts: Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }> = [];
+
+      if (file) {
+        const isImage = IMAGE_TYPES.includes(file.type);
+        const isPDF = file.type === PDF_TYPE || file.name.endsWith('.pdf');
+
+        if (isImage || isPDF) {
+          const base64 = await fileToBase64(file);
+          if (isImage) {
+            contentParts.push({ type: 'image', source: { type: 'base64', media_type: file.type, data: base64 } });
+          } else {
+            contentParts.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } });
+          }
+        }
+      }
+
+      if (textInput.trim()) {
+        contentParts.push({ type: 'text', text: `다음 공고문/공문서 내용을 분석해주세요:\n\n${textInput}` });
+      } else {
+        contentParts.push({ type: 'text', text: '이 공고문/공문서의 핵심 내용을 분석해주세요.' });
+      }
+
       const response = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -63,18 +96,15 @@ export default function AnnouncementPage({ params }: { params: { id: string } })
 ## ⚠️ 유의사항
 
 ## 💡 이장님 참고사항`,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: file.type || 'image/jpeg', data: base64 } },
-              { type: 'text', text: '이 공고문/공문서의 핵심 내용을 분석해주세요.' },
-            ],
-          }],
+          messages: [{ role: 'user', content: contentParts }],
         }),
       });
       const data = await response.json();
       if (data.error) throw new Error(data.error);
       setResult(data.text);
+      try {
+        await saveAITask(id, { type: 'announcement', title: `공고문 분석 - ${file?.name || '텍스트 입력'}`, inputText: textInput, inputImages: preview ? [preview] : [], outputText: data.text, outputData: null, createdBy: user?.uid || '' });
+      } catch {}
     } catch (e) {
       setError(e instanceof Error ? e.message : '분석에 실패했습니다.');
     } finally {
@@ -83,6 +113,8 @@ export default function AnnouncementPage({ params }: { params: { id: string } })
   };
 
   const copyResult = () => { navigator.clipboard.writeText(result); setCopied(true); setTimeout(() => setCopied(false), 2000); };
+
+  const canAnalyze = file || textInput.trim();
 
   return (
     <DashboardShell villageId={id}>
@@ -95,26 +127,38 @@ export default function AnnouncementPage({ params }: { params: { id: string } })
         </div>
 
         <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-6 mb-4">
-          <p className="text-sm text-[var(--color-text-secondary)] mb-4">공고문 또는 공문서 이미지를 업로드하면 AI가 핵심 내용을 추출·요약합니다.</p>
-          <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
-          {!file ? (
-            <button onClick={() => fileRef.current?.click()} className="w-full h-48 rounded-xl border-2 border-dashed border-[var(--color-border)] flex flex-col items-center justify-center gap-2 hover:border-primary transition-colors">
-              <ImagePlus className="w-10 h-10 text-[var(--color-text-secondary)]" />
-              <span className="text-sm text-[var(--color-text-secondary)]">클릭하여 이미지 업로드</span>
-              <span className="text-xs text-[var(--color-text-secondary)]">JPG, PNG, PDF</span>
-            </button>
-          ) : (
-            <div className="space-y-4">
-              {preview && <img src={preview} alt="미리보기" className="max-h-64 rounded-xl mx-auto" />}
-              <div className="flex items-center justify-between">
-                <span className="text-sm truncate flex-1">{file.name}</span>
-                <button onClick={() => { setFile(null); setPreview(''); setResult(''); }} className="text-xs text-error ml-2">제거</button>
+          <p className="text-sm text-[var(--color-text-secondary)] mb-4">공고문·공문서의 내용을 붙여넣기하거나, 이미지/PDF를 업로드하면 AI가 핵심 내용을 분석합니다.</p>
+
+          {/* Text input */}
+          <textarea
+            value={textInput}
+            onChange={(e) => setTextInput(e.target.value)}
+            rows={6}
+            placeholder="공고문 내용을 여기에 붙여넣기 하세요...&#10;&#10;한글(HWP), 워드, PPT 등의 파일은 내용을 복사해서 붙여넣기 해주세요.&#10;이미지나 PDF 파일은 아래에서 첨부할 수 있습니다."
+            className="w-full px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl resize-none focus:outline-none focus:border-primary mb-3"
+          />
+
+          {/* File upload */}
+          <input ref={fileRef} type="file" accept="image/*,.pdf,.txt,.doc,.docx,.hwp,.hwpx,.ppt,.pptx,.xls,.xlsx,.rtf" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
+
+          {file ? (
+            <div className="mb-4 space-y-3">
+              {preview && <img src={preview} alt="미리보기" className="max-h-48 rounded-xl border border-[var(--color-border)]" />}
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]">
+                <FileText className="w-4 h-4 text-blue-500" />
+                <span className="text-sm flex-1 truncate">{file.name}</span>
+                <button onClick={() => { setFile(null); setPreview(''); }} className="text-xs text-error">제거</button>
               </div>
-              <button onClick={analyze} disabled={loading} className="w-full py-3 rounded-xl bg-primary text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50">
-                {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> 분석 중...</> : '분석하기'}
-              </button>
             </div>
+          ) : (
+            <button onClick={() => fileRef.current?.click()} className="flex items-center gap-2 px-4 py-2 mb-4 rounded-lg border border-[var(--color-border)] text-sm hover:border-primary">
+              <Upload className="w-4 h-4" /> 파일 첨부 (이미지, PDF 등)
+            </button>
           )}
+
+          <button onClick={analyze} disabled={loading || !canAnalyze} className="w-full py-3 rounded-xl bg-primary text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50">
+            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> 분석 중...</> : '분석하기'}
+          </button>
         </div>
 
         {error && <div className="p-4 rounded-xl bg-red-50 text-error text-sm mb-4">{error}</div>}
@@ -133,4 +177,12 @@ export default function AnnouncementPage({ params }: { params: { id: string } })
       </div>
     </DashboardShell>
   );
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(',')[1]);
+    reader.readAsDataURL(file);
+  });
 }
