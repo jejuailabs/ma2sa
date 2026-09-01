@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  BarChart3, Globe, Home, Loader2, MapPin, Save, Settings, Shield,
-  Trash2, Users, Zap,
+  BarChart3, Globe, Home, ImagePlus, Loader2, MapPin, Save, Settings, Shield,
+  Trash2, Upload, Users, X, Zap,
 } from 'lucide-react';
+import { uploadFile } from '@/lib/firebase/storage';
 import { useAuth } from '@/hooks/useAuth';
 import {
   type AdminStats, type AILog, type SiteConfig,
@@ -43,6 +44,7 @@ export default function AdminPage() {
   const [aiLogs, setAiLogs] = useState<AILog[]>([]);
   const [aiSummary, setAiSummary] = useState<{ totalTokens: number; totalCost: number; byFeature: Record<string, number> }>({ totalTokens: 0, totalCost: 0, byFeature: {} });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
@@ -93,6 +95,21 @@ export default function AdminPage() {
       await toggleSiteAdmin(uid, !current);
       setUsers((prev) => prev.map((u) => u.uid === uid ? { ...u, isSiteAdmin: !current } : u));
     } catch { setNotice('권한 변경 실패'); }
+  };
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setNotice('이미지 파일만 업로드 가능합니다.'); return; }
+    if (file.size > 10 * 1024 * 1024) { setNotice('파일 크기는 10MB 이하여야 합니다.'); return; }
+    setUploading(true); setNotice('');
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const url = await uploadFile(`site/banner_${Date.now()}.${ext}`, file);
+      setConfigDraft((prev) => ({ ...prev, bannerImageURL: url }));
+      setNotice('배너 이미지가 업로드되었습니다. "설정 저장"을 눌러 적용하세요.');
+    } catch { setNotice('이미지 업로드에 실패했습니다.'); }
+    finally { setUploading(false); e.target.value = ''; }
   };
 
   const handleDeleteVillage = async (villageId: string) => {
@@ -325,21 +342,39 @@ export default function AdminPage() {
 
               <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6 space-y-5">
                 <h3 className="font-semibold text-lg">배너 설정</h3>
-                <label className="block">
-                  <span className="text-sm font-medium text-[var(--color-text)]">배너 이미지 URL</span>
-                  <input
-                    value={configDraft.bannerImageURL}
-                    onChange={(e) => setConfigDraft({ ...configDraft, bannerImageURL: e.target.value })}
-                    placeholder="https://..."
-                    className="mt-1.5 w-full px-4 py-3 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl focus:outline-none focus:border-primary"
-                  />
-                </label>
-                {configDraft.bannerImageURL && (
-                  <div className="relative rounded-xl overflow-hidden h-40">
-                    <img src={configDraft.bannerImageURL} alt="미리보기" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent" />
-                  </div>
-                )}
+                <div>
+                  <span className="text-sm font-medium text-[var(--color-text)]">배너 이미지</span>
+                  {configDraft.bannerImageURL ? (
+                    <div className="mt-2 relative rounded-xl overflow-hidden h-40 group">
+                      <img src={configDraft.bannerImageURL} alt="배너 미리보기" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent" />
+                      <button
+                        onClick={() => setConfigDraft({ ...configDraft, bannerImageURL: '' })}
+                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+                        title="이미지 제거"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                      <label className="absolute bottom-2 right-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/50 text-white text-xs cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70">
+                        <Upload className="w-3.5 h-3.5" /> 변경
+                        <input type="file" accept="image/*" onChange={handleBannerUpload} className="hidden" />
+                      </label>
+                    </div>
+                  ) : (
+                    <label className="mt-2 flex flex-col items-center justify-center h-40 rounded-xl border-2 border-dashed border-[var(--color-border)] bg-[var(--color-bg)] cursor-pointer hover:border-primary transition-colors">
+                      {uploading ? (
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                      ) : (
+                        <>
+                          <ImagePlus className="w-8 h-8 text-[var(--color-text-secondary)] mb-2" />
+                          <span className="text-sm text-[var(--color-text-secondary)]">클릭하여 배너 이미지 업로드</span>
+                          <span className="text-xs text-[var(--color-text-secondary)] mt-1">JPG, PNG, WebP (최대 10MB)</span>
+                        </>
+                      )}
+                      <input type="file" accept="image/*" onChange={handleBannerUpload} className="hidden" disabled={uploading} />
+                    </label>
+                  )}
+                </div>
                 <label className="block">
                   <span className="text-sm font-medium text-[var(--color-text)]">배너 제목</span>
                   <textarea
