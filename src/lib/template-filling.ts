@@ -214,8 +214,18 @@ function replaceCellText(cell: string, textTag: string, value: string, format: T
         : cell;
     replaced = updated !== cell;
   }
-  if (format === 'hwpx' && sourceStyle && replaced) updated = applyHwpRunStyle(updated, sourceStyle);
+  if (format === 'hwpx' && replaced) {
+    // HWPX는 linesegarray에 원문 줄 좌표를 저장한다. 원문보다 긴 AI 결과를
+    // 넣은 뒤 이 배열을 남기면 한글이 한 줄 좌표에 문자를 겹쳐 그린다.
+    // 배열을 제거하면 한글이 문서를 열 때 셀 너비에 맞춰 줄을 다시 계산한다.
+    updated = clearHwpLineSegments(updated);
+    if (sourceStyle) updated = applyHwpRunStyle(updated, sourceStyle);
+  }
   return updated;
+}
+
+function clearHwpLineSegments(cell: string) {
+  return cell.replace(/<hp:linesegarray\b[^>]*>[\s\S]*?<\/hp:linesegarray>/gi, '');
 }
 
 function insertHwpCellText(cell: string, escapedText: string, charPrIDRef?: string) {
