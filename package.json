@@ -13,6 +13,7 @@
     "clsx": "^2.1.1",
     "fast-xml-parser": "^5.11.1",
     "firebase": "^10.14.1",
+    "html2pdf.js": "^0.14.0",
     "lucide-react": "^0.453.0",
     "mammoth": "^1.12.2",
     "next": "^14.2.15",
