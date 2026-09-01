@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FileText, Receipt, Mic, Volume2, FileSearch, ClipboardList, Search, Loader2, Trash2, ChevronDown, ChevronUp, AlertCircle, Clock3, CheckCircle2, Download } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
-import { subscribeAITasks, deleteAITask } from '@/lib/firebase/firestore';
+import { subscribeAITasks, deleteAITask, updateAITask } from '@/lib/firebase/firestore';
+import { uploadFile } from '@/lib/firebase/storage';
 import type { AITask, AITaskType } from '@/types/feed';
 
 const TYPE_CONFIG: Record<AITaskType, { icon: typeof FileText; label: string; color: string; bg: string }> = {
@@ -31,6 +32,8 @@ export default function AITaskListPage({ params }: { params: { id: string } }) {
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [downloadError, setDownloadError] = useState('');
+  const [restoringNarrationId, setRestoringNarrationId] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,6 +57,32 @@ export default function AITaskListPage({ params }: { params: { id: string } }) {
     } catch {}
   };
 
+  const restoreNarrationFile = async (task: AITask) => {
+    if (!task.inputText.trim()) { setDownloadError('원문이 없어 MP3를 다시 만들 수 없습니다.'); return; }
+    setRestoringNarrationId(task.id);
+    setDownloadError('');
+    try {
+      const settings = getNarrationSettings(task.outputData);
+      const response = await fetch('/api/ai/tts', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: task.inputText, voice: settings.voice, speed: settings.speed }),
+      });
+      const data = await response.json();
+      if (!response.ok || data.error) throw new Error(data.error || 'MP3를 다시 만들지 못했습니다.');
+      const audioBytes = atob(data.audioContent);
+      const bytes = new Uint8Array(audioBytes.length);
+      for (let index = 0; index < audioBytes.length; index++) bytes[index] = audioBytes.charCodeAt(index);
+      const blob = new Blob([bytes], { type: 'audio/mpeg' });
+      const fileName = 'broadcast.mp3';
+      const audioUrl = await uploadFile(`villages/${id}/aiTasks/${task.id}/${fileName}`, new File([blob], fileName, { type: 'audio/mpeg' }));
+      await updateAITask(id, task.id, { outputData: { ...settings, audioUrl }, stage: '음성 생성 완료 (MP3 복원됨)' });
+    } catch (cause) {
+      setDownloadError(cause instanceof Error ? cause.message : 'MP3를 다시 만들지 못했습니다.');
+    } finally {
+      setRestoringNarrationId('');
+    }
+  };
+
   const filtered = tasks.filter((t) =>
     !searchText || t.title.includes(searchText) || t.inputText?.includes(searchText) || t.outputText?.includes(searchText)
   );
@@ -69,6 +98,7 @@ export default function AITaskListPage({ params }: { params: { id: string } }) {
         </div>
 
         {loadError && <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{loadError}</div>}
+        {downloadError && <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{downloadError}</div>}
 
         {/* Filters */}
         <div className="flex flex-wrap gap-2 mb-4">
@@ -166,6 +196,8 @@ export default function AITaskListPage({ params }: { params: { id: string } }) {
                               <div className="space-y-3"><button onClick={() => downloadTaskResult(task)} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-bold hover:border-primary"><Download className="h-3.5 w-3.5" />엑셀용 CSV 다운로드</button><ReceiptTable rows={task.outputData as ReceiptRow[]} /></div>
                             ) : task.type === 'narration' && getAudioUrl(task.outputData) ? (
                               <div className="space-y-2"><a href={getAudioUrl(task.outputData)} download={`${task.title}.mp3`} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-bold hover:border-primary"><Download className="h-3.5 w-3.5" />MP3 다운로드</a><audio controls src={getAudioUrl(task.outputData)} className="w-full" /><p className="text-xs text-[var(--color-text-secondary)]">저장된 MP3 결과물</p></div>
+                            ) : task.type === 'narration' && task.outputText ? (
+                              <div className="space-y-3"><p className="text-sm whitespace-pre-wrap">{task.outputText}</p><button onClick={() => restoreNarrationFile(task)} disabled={restoringNarrationId === task.id} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{restoringNarrationId === task.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}{restoringNarrationId === task.id ? 'MP3 만드는 중...' : 'MP3 다시 만들기'}</button><p className="text-xs text-[var(--color-text-secondary)]">이전 기록에 저장된 파일이 없어 원문과 저장된 목소리·속도로 새 MP3를 만듭니다.</p></div>
                             ) : task.type === 'format' && getOutputFile(task.outputData).url ? (
                               <div className="space-y-3"><a href={getOutputFile(task.outputData).url} download={getOutputFile(task.outputData).name} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-bold">다운로드: {getOutputFile(task.outputData).name}</a><p className="text-sm whitespace-pre-wrap">{task.outputText}</p></div>
                             ) : task.outputText ? (
@@ -192,6 +224,15 @@ function getAudioUrl(outputData: unknown) {
   if (!outputData || typeof outputData !== 'object' || !('audioUrl' in outputData)) return '';
   const audioUrl = (outputData as { audioUrl?: unknown }).audioUrl;
   return typeof audioUrl === 'string' ? audioUrl : '';
+}
+
+function getNarrationSettings(outputData: unknown) {
+  if (!outputData || typeof outputData !== 'object') return { voice: 'nova', speed: 1 };
+  const data = outputData as { voice?: unknown; speed?: unknown };
+  return {
+    voice: typeof data.voice === 'string' ? data.voice : 'nova',
+    speed: typeof data.speed === 'number' && data.speed >= 0.5 && data.speed <= 1.5 ? data.speed : 1,
+  };
 }
 
 function getOutputFile(outputData: unknown) {

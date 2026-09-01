@@ -71,7 +71,7 @@ export default function NarrationPage({ params }: { params: { id: string } }) {
       const response = await fetch('/api/ai/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: SAMPLE_TEXT, voice: voiceId, speed: 0.9 }),
+        body: JSON.stringify({ text: SAMPLE_TEXT, voice: voiceId, speed }),
       });
       const data = await response.json();
       if (data.error) throw new Error(data.error);
@@ -84,6 +84,7 @@ export default function NarrationPage({ params }: { params: { id: string } }) {
 
       if (previewAudioRef.current) {
         previewAudioRef.current.src = url;
+        previewAudioRef.current.playbackRate = speed;
         previewAudioRef.current.onended = () => setPreviewPlaying('');
         await previewAudioRef.current.play();
         setPreviewPlaying(voiceId);

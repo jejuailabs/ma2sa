@@ -176,7 +176,7 @@ function fillXmlFields(xml: string, config: FormatConfig, sectionIndex: number, 
         const id = `s${sectionIndex}-t${currentTable}-r${currentRow}-c${currentCell}`;
         if (!(id in values)) return cell;
         // HWPX 양식에는 입력 예시가 빨간 글씨로 작성된 경우가 많다.
-        // 항목명 셀의 글자 모양을 가져와 결과값에는 일반 항목 글자 모양을 적용한다.
+        // 입력칸의 모든 기존 텍스트를 비우고, 항목명 셀의 일반 글자 모양으로 새 값만 넣는다.
         const sourceStyle = config.format === 'hwpx' ? getHwpRunStyle(rowCells[currentCell - 1]) : undefined;
         const updated = replaceCellText(cell, config.textTag, values[id] || '', config.format, sourceStyle);
         if (updated !== cell) filled.add(id);
@@ -210,16 +210,13 @@ function replaceCellText(cell: string, textTag: string, value: string, format: T
 
 function getHwpRunStyle(cell: string | undefined) {
   if (!cell) return undefined;
-  return cell.match(/<hp:run\\b[^>]*\\bcharPrIDRef="([^"]+)"/i)?.[1];
+  return cell.match(/<hp:run\b[^>]*\bcharPrIDRef="([^"]+)"/i)?.[1];
 }
 
 function applyHwpRunStyle(cell: string, charPrIDRef: string) {
-  let applied = false;
-  return cell.replace(/<hp:run\\b([^>]*)>/gi, (run, attributes) => {
-    if (applied) return run;
-    applied = true;
-    if (/\\bcharPrIDRef="[^"]*"/i.test(attributes)) {
-      return `<hp:run${attributes.replace(/\\bcharPrIDRef="[^"]*"/i, `charPrIDRef="${charPrIDRef}"`)}>`;
+  return cell.replace(/<hp:run\b([^>]*)>/gi, (run, attributes) => {
+    if (/\bcharPrIDRef="[^"]*"/i.test(attributes)) {
+      return `<hp:run${attributes.replace(/\bcharPrIDRef="[^"]*"/i, `charPrIDRef="${charPrIDRef}"`)}>`;
     }
     return `<hp:run charPrIDRef="${charPrIDRef}"${attributes}>`;
   });
