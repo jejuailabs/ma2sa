@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { isFirebaseConfigured, db } from '@/lib/firebase/config';
-import { collection, query, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 import { subscribeTodos } from '@/lib/firebase/firestore';
 import type { Todo } from '@/types/feed';
 
@@ -37,11 +37,9 @@ export function MiniCalendar({ villageId, selectedDate, onSelectDate }: MiniCale
 
   useEffect(() => {
     if (!isFirebaseConfigured || !db) return;
-    getDocs(query(collection(db, 'villages', villageId, 'schedule')))
-      .then((snap) => {
-        setEvents(snap.docs.map((d) => ({ id: d.id, ...d.data() } as CalendarEvent)));
-      })
-      .catch(() => {});
+    return onSnapshot(query(collection(db, 'villages', villageId, 'schedule')), (snap) => {
+      setEvents(snap.docs.map((d) => ({ id: d.id, ...d.data() } as CalendarEvent)));
+    }, () => setEvents([]));
   }, [villageId]);
 
   useEffect(() => subscribeTodos(villageId, setTodos), [villageId]);

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Calendar, Plus, Loader2, Trash2, Clock, MapPin } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { isFirebaseConfigured, db } from '@/lib/firebase/config';
-import { collection, query, orderBy, getDocs, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 
 interface ScheduleEvent {
   id: string;
@@ -30,20 +30,24 @@ export default function SchedulePage({ params }: { params: { id: string } }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<{ title: string; date: string; time: string; location: string; description: string; type: ScheduleEvent['type'] }>({ title: '', date: '', time: '', location: '', description: '', type: 'event' });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!isFirebaseConfigured || !db) { setLoading(false); return; }
-    getDocs(query(collection(db, 'villages', id, 'schedule'), orderBy('date', 'asc')))
-      .then((snap) => {
-        setEvents(snap.docs.map((d) => ({ id: d.id, ...d.data() } as ScheduleEvent)));
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    return onSnapshot(query(collection(db, 'villages', id, 'schedule'), orderBy('date', 'asc')), (snap) => {
+      setEvents(snap.docs.map((d) => ({ id: d.id, ...d.data() } as ScheduleEvent)));
+      setLoading(false);
+      setError('');
+    }, (cause) => {
+      setLoading(false);
+      setError(cause.message || '일정 목록을 불러오지 못했습니다.');
+    });
   }, [id]);
 
   const addEvent = async () => {
     if (!form.title.trim() || !form.date || !db) return;
     setSaving(true);
+    setError('');
     try {
       const docRef = await addDoc(collection(db, 'villages', id, 'schedule'), {
         ...form,
@@ -52,7 +56,9 @@ export default function SchedulePage({ params }: { params: { id: string } }) {
       setEvents((prev) => [...prev, { id: docRef.id, ...form }].sort((a, b) => a.date.localeCompare(b.date)));
       setForm({ title: '', date: '', time: '', location: '', description: '', type: 'event' });
       setShowForm(false);
-    } catch {} finally { setSaving(false); }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '일정을 저장하지 못했습니다.');
+    } finally { setSaving(false); }
   };
 
   const deleteEvent = async (eventId: string) => {
@@ -60,7 +66,9 @@ export default function SchedulePage({ params }: { params: { id: string } }) {
     try {
       await deleteDoc(doc(db, 'villages', id, 'schedule', eventId));
       setEvents((prev) => prev.filter((e) => e.id !== eventId));
-    } catch {}
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '일정을 삭제하지 못했습니다.');
+    }
   };
 
   const today = new Date().toISOString().slice(0, 10);
@@ -81,6 +89,8 @@ export default function SchedulePage({ params }: { params: { id: string } }) {
             <Plus className="w-4 h-4" /> 일정 추가
           </button>
         </div>
+
+        {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
         {showForm && (
           <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-6 mb-4">

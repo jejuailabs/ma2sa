@@ -50,6 +50,7 @@ service cloud.firestore {
       }
 
       match /todos/{id} { allow read, write: if adminOf(villageId); }
+      match /schedule/{id} { allow read, write: if adminOf(villageId); }
       match /documents/{id} { allow read: if memberOf(villageId); allow write: if adminOf(villageId); }
       match /aiTasks/{taskId} {
         allow read: if memberOf(villageId);
