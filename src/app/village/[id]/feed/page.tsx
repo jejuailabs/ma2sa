@@ -35,7 +35,7 @@ export default function VillageFeedPage({ params }: { params: { id: string } }) 
           {loading ? <p className="col-span-2 text-center py-12 text-[var(--color-text-secondary)]">소식을 불러오는 중입니다...</p>
             : error ? <p className="col-span-2 text-center py-12 text-error">{error}</p>
             : posts.length === 0 ? <p className="col-span-2 text-center py-12 text-[var(--color-text-secondary)]">첫 소식을 작성해보세요.</p>
-            : posts.map((post) => <FeedCard key={post.id} post={post} />)}
+            : posts.map((post) => <FeedCard key={post.id} post={post} onPostUpdated={reload} onPostDeleted={reload} />)}
         </div>
       </div>
     </DashboardShell>

@@ -6,6 +6,8 @@ import {
   BarChart3, Bot, ClipboardList, Globe, Home, Newspaper, Settings, Users, Wallet, Calendar, FilePenLine,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { ROLE_LABELS } from '@/types/user';
 
 interface SidebarMenuProps {
   villageId: string;
@@ -30,6 +32,7 @@ const MANAGE_MENU = [
 
 export function SidebarMenu({ villageId, villageName = '내 마을' }: SidebarMenuProps) {
   const pathname = usePathname();
+  const { user } = useAuth();
   const basePath = `/village/${villageId}`;
 
   return (
@@ -42,6 +45,11 @@ export function SidebarMenu({ villageId, villageName = '내 마을' }: SidebarMe
         </div>
         <p className="text-xs text-sidebar-text/60 mt-1">{villageName} 업무모드</p>
       </Link>
+
+      <div className="mx-3 mb-4 rounded-xl border border-white/10 bg-white/10 px-3 py-2.5">
+        <p className="truncate text-sm font-bold text-white">{user?.displayName || '로그인 사용자'}</p>
+        <p className="mt-0.5 text-xs text-sidebar-text/70">{ROLE_LABELS[user?.role || 'member']} · {villageName}</p>
+      </div>
 
       {/* Main menu */}
       <nav className="flex-1 px-3">

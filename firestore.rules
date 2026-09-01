@@ -26,6 +26,11 @@ service cloud.firestore {
       allow create: if signedIn();
     }
 
+    // collectionGroup 쿼리용 - 공개 글은 누구나 읽기 허용
+    match /{path=**}/posts/{postId} {
+      allow read: if resource.data.isPublic == true;
+    }
+
     match /villages/{villageId} {
       allow get: if resource.data.settings.isPublic == true || memberOf(villageId) || isSiteAdmin();
       allow list: if signedIn();
@@ -46,7 +51,11 @@ service cloud.firestore {
         allow create: if memberOf(villageId) && request.resource.data.authorId == request.auth.uid;
         allow update, delete: if memberOf(villageId) && (resource.data.authorId == request.auth.uid || adminOf(villageId));
         match /likes/{uid} { allow read: if true; allow create, delete: if memberOf(villageId) && request.auth.uid == uid; }
-        match /comments/{commentId} { allow read: if resource.data.isPublic == true || memberOf(villageId); allow create: if memberOf(villageId) && request.resource.data.authorId == request.auth.uid; allow update, delete: if memberOf(villageId) && resource.data.authorId == request.auth.uid; }
+        match /comments/{commentId} {
+          allow read: if true;
+          allow create: if memberOf(villageId) && request.resource.data.authorId == request.auth.uid;
+          allow delete: if memberOf(villageId) && resource.data.authorId == request.auth.uid;
+        }
       }
 
       match /todos/{id} { allow read, write: if adminOf(villageId); }

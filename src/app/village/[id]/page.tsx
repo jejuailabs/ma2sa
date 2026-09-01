@@ -10,7 +10,6 @@ import { MobileDashboardHeader } from '@/components/dashboard/MobileDashboardHea
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { RecentNews } from '@/components/dashboard/RecentNews';
-import { TodoList } from '@/components/dashboard/TodoList';
 import { AIFeatureButton } from '@/components/dashboard/AIFeatureButton';
 import { PhotoGrid } from '@/components/dashboard/PhotoGrid';
 import { MiniCalendar } from '@/components/dashboard/MiniCalendar';
@@ -28,7 +27,6 @@ export default function DashboardPage({ params }: { params: { id: string } }) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [documents, setDocuments] = useState<VillageDocument[]>([]);
   const [error, setError] = useState('');
-  const [selectedTodoDate, setSelectedTodoDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
     if (!isFirebaseConfigured) return;
@@ -88,9 +86,7 @@ export default function DashboardPage({ params }: { params: { id: string } }) {
 
             {/* Right sidebar */}
             <aside className="hidden xl:block w-72 shrink-0 space-y-4">
-              <MiniCalendar villageId={id} selectedDate={selectedTodoDate} onSelectDate={setSelectedTodoDate} />
-
-              <TodoList initialTodos={[]} villageId={id} userId={user?.uid} selectedDate={selectedTodoDate} />
+              <MiniCalendar villageId={id} />
 
               {/* Budget card */}
               <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-5">

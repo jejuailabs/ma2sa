@@ -5,7 +5,7 @@ import {
   type DocumentData, type DocumentSnapshot, type QueryConstraint, type Timestamp, type Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './config';
-import type { AITask, AITaskType, DashboardStats, DocumentType, Finance, Post, PostType, Todo, VillageDocument } from '@/types/feed';
+import type { AITask, AITaskType, Comment, DashboardStats, DocumentType, Finance, Post, PostType, Todo, VillageDocument } from '@/types/feed';
 import type { UserRole } from '@/types/user';
 import type { Village } from '@/types/village';
 
@@ -247,4 +247,38 @@ export async function deleteAITask(villageId: string, taskId: string) {
 export async function putUserProfile(uid: string, data: Record<string, unknown>) {
   if (!db) throw new Error('Firebase가 설정되지 않았습니다.');
   await setDoc(doc(db, 'users', uid), data, { merge: true });
+}
+
+export async function updatePost(villageId: string, postId: string, data: Partial<Pick<Post, 'title' | 'content' | 'images' | 'isPublic' | 'tags'>>) {
+  if (!db) throw new Error('Firebase가 설정되지 않았습니다.');
+  await updateDoc(doc(db, 'villages', villageId, 'posts', postId), { ...data, updatedAt: serverTimestamp() });
+}
+
+export async function deletePost(villageId: string, postId: string) {
+  if (!db) throw new Error('Firebase가 설정되지 않았습니다.');
+  await deleteDoc(doc(db, 'villages', villageId, 'posts', postId));
+}
+
+export async function getComments(villageId: string, postId: string): Promise<Comment[]> {
+  if (!db) return [];
+  const snapshot = await getDocs(query(collection(db, 'villages', villageId, 'posts', postId, 'comments'), orderBy('createdAt', 'asc')));
+  return snapshot.docs.map((d) => {
+    const data = d.data();
+    return { ...data, id: d.id, createdAt: asDate(data.createdAt) } as Comment;
+  });
+}
+
+export async function addComment(villageId: string, postId: string, data: { authorId: string; authorName: string; authorPhotoURL: string; content: string }) {
+  if (!db) throw new Error('Firebase가 설정되지 않았습니다.');
+  const postRef = doc(db, 'villages', villageId, 'posts', postId);
+  const ref = await addDoc(collection(db, 'villages', villageId, 'posts', postId, 'comments'), { ...data, createdAt: serverTimestamp() });
+  await updateDoc(postRef, { commentCount: increment(1) });
+  return ref.id;
+}
+
+export async function deleteComment(villageId: string, postId: string, commentId: string) {
+  if (!db) throw new Error('Firebase가 설정되지 않았습니다.');
+  const postRef = doc(db, 'villages', villageId, 'posts', postId);
+  await deleteDoc(doc(db, 'villages', villageId, 'posts', postId, 'comments', commentId));
+  await updateDoc(postRef, { commentCount: increment(-1) });
 }
