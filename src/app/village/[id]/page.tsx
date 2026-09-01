@@ -38,10 +38,10 @@ export default function DashboardPage({ params }: { params: { id: string } }) {
   }, [id]);
 
   const statCards = [
-    { icon: Newspaper, label: '마을 소식', value: stats.news, sub: `이번 달 +${Math.max(1, stats.news)}`, color: 'text-blue-600', bgColor: 'bg-blue-50 dark:bg-blue-500/10' },
-    { icon: Calendar, label: '예정 행사', value: stats.events, sub: '가장 가까운 일정 D-4', color: 'text-orange-500', bgColor: 'bg-orange-50 dark:bg-orange-500/10' },
-    { icon: Users, label: '마을 주민', value: stats.members, sub: '가입 승인 2건', color: 'text-green-600', bgColor: 'bg-green-50 dark:bg-green-500/10' },
-    { icon: Wallet, label: '이번 달 지출', value: formatCurrency(stats.balance), sub: '예산의 42%', color: 'text-purple-600', bgColor: 'bg-purple-50 dark:bg-purple-500/10' },
+    { icon: Newspaper, label: '마을 소식', value: stats.news, sub: stats.news > 0 ? `이번 달 ${stats.news}건` : '소식 없음', color: 'text-blue-600', bgColor: 'bg-blue-50 dark:bg-blue-500/10' },
+    { icon: Calendar, label: '예정 행사', value: stats.events, sub: stats.events > 0 ? `${stats.events}건 예정` : '예정 행사 없음', color: 'text-orange-500', bgColor: 'bg-orange-50 dark:bg-orange-500/10' },
+    { icon: Users, label: '마을 주민', value: stats.members, sub: stats.members > 0 ? `등록 ${stats.members}명` : '주민 없음', color: 'text-green-600', bgColor: 'bg-green-50 dark:bg-green-500/10' },
+    { icon: Wallet, label: '자금 잔액', value: formatCurrency(stats.balance), sub: stats.balance > 0 ? '잔액' : '내역 없음', color: 'text-purple-600', bgColor: 'bg-purple-50 dark:bg-purple-500/10' },
   ];
   const photos = documents.filter((item) => item.type === 'photo' && item.fileURL).map((item) => item.fileURL);
 
@@ -69,7 +69,7 @@ export default function DashboardPage({ params }: { params: { id: string } }) {
             <main className="flex-1 min-w-0 max-w-4xl">
               {error && <div className="mb-4 p-3 rounded-lg bg-red-50 text-error text-sm">{error}</div>}
 
-              <DashboardGreeting userName={user?.displayName || '사용자'} userRole={user?.role || 'member'} villageName={villageName} />
+              <DashboardGreeting userName={user?.displayName || '사용자'} userRole={user?.role || 'member'} villageName={villageName} todoCount={stats.todos} memberCount={stats.members} />
 
               {/* Stat cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">

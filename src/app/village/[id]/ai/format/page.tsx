@@ -1,52 +1,106 @@
 'use client';
 
-import { useState } from 'react';
-import { FileText, Loader2, Copy, Check, Download } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { FileText, Loader2, Copy, Check, Download, Upload, Eye, X, ImagePlus, FileUp } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
-
-const TEMPLATES = [
-  { value: 'notice', label: '공지문/안내문', desc: '마을 주민 대상 공지사항' },
-  { value: 'report', label: '보고서/결과보고', desc: '상급기관 제출용 보고서' },
-  { value: 'proposal', label: '사업계획서', desc: '보조금·지원사업 신청용' },
-  { value: 'letter', label: '협조공문', desc: '관공서·단체 협조 요청문' },
-  { value: 'minutes', label: '회의록', desc: '마을회의 결과 공식 기록' },
-  { value: 'budget', label: '예산서/결산서', desc: '마을 자금 관련 문서' },
-];
 
 export default function FormatPage({ params }: { params: { id: string } }) {
   const { id } = params;
-  const [template, setTemplate] = useState('notice');
-  const [input, setInput] = useState('');
+  const sourceFileRef = useRef<HTMLInputElement>(null);
+  const templateFileRef = useRef<HTMLInputElement>(null);
+
+  const [sourceText, setSourceText] = useState('');
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
+  const [sourcePreview, setSourcePreview] = useState('');
+
+  const [templateFile, setTemplateFile] = useState<File | null>(null);
+  const [templatePreview, setTemplatePreview] = useState('');
+  const [templateText, setTemplateText] = useState('');
+  const [showTemplatePreview, setShowTemplatePreview] = useState(false);
+
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
 
+  const handleSourceFile = (f: File) => {
+    setSourceFile(f);
+    if (f.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => setSourcePreview(reader.result as string);
+      reader.readAsDataURL(f);
+    } else {
+      setSourcePreview('');
+      const reader = new FileReader();
+      reader.onload = () => setSourceText(reader.result as string);
+      reader.readAsText(f);
+    }
+  };
+
+  const handleTemplateFile = (f: File) => {
+    setTemplateFile(f);
+    if (f.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => setTemplatePreview(reader.result as string);
+      reader.readAsDataURL(f);
+    } else {
+      setTemplatePreview('');
+      const reader = new FileReader();
+      reader.onload = () => setTemplateText(reader.result as string);
+      reader.readAsText(f);
+    }
+  };
+
   const convert = async () => {
-    if (!input.trim()) { setError('변환할 내용을 입력해주세요.'); return; }
+    if (!sourceText.trim() && !sourceFile) { setError('변환할 원문을 입력하거나 파일을 첨부해주세요.'); return; }
+    if (!templateFile && !templateText.trim()) { setError('변환할 양식 파일을 업로드해주세요.'); return; }
     setLoading(true);
     setError('');
     try {
-      const templateLabel = TEMPLATES.find((t) => t.value === template)?.label ?? template;
+      const messages: Array<{ role: 'user'; content: string | Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }> }> = [];
+
+      const contentParts: Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }> = [];
+
+      if (sourceFile && sourceFile.type.startsWith('image/')) {
+        const base64 = await fileToBase64(sourceFile);
+        contentParts.push({ type: 'image', source: { type: 'base64', media_type: sourceFile.type, data: base64 } });
+        contentParts.push({ type: 'text', text: '위 이미지가 변환할 원문입니다.' });
+      }
+
+      if (templateFile && templateFile.type.startsWith('image/')) {
+        const base64 = await fileToBase64(templateFile);
+        contentParts.push({ type: 'image', source: { type: 'base64', media_type: templateFile.type, data: base64 } });
+        contentParts.push({ type: 'text', text: '위 이미지가 변환할 양식(템플릿)입니다.' });
+      }
+
+      let instruction = '다음 원문 내용을 주어진 양식에 맞게 변환해주세요.\n\n';
+      if (sourceText.trim()) instruction += `[원문 내용]\n${sourceText.trim()}\n\n`;
+      if (templateText.trim()) instruction += `[변환할 양식]\n${templateText.trim()}\n\n`;
+      instruction += '양식의 구조와 형태를 그대로 유지하면서, 원문의 내용을 양식에 맞게 채워 넣어주세요. 완성된 문서 텍스트만 출력하세요.';
+
+      if (contentParts.length > 0) {
+        contentParts.push({ type: 'text', text: instruction });
+        messages.push({ role: 'user', content: contentParts });
+      } else {
+        messages.push({ role: 'user', content: instruction });
+      }
+
       const response = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           feature: 'format',
-          system: `당신은 한국 마을 행정 문서 전문가입니다. 사용자가 입력한 초안/메모를 공식 "${templateLabel}" 양식으로 변환합니다.
+          system: `당신은 한국 마을 행정 문서 전문가입니다. 사용자가 제공한 원문(텍스트, 메모, 초안 등)을 지정된 양식/템플릿에 맞게 변환합니다.
 
 변환 규칙:
-1. 대한민국 공문서 표준 양식을 따릅니다
-2. 문서번호, 날짜, 수신/발신 등 형식적 요소를 포함합니다
+1. 양식의 구조, 레이아웃, 형식을 정확히 따릅니다
+2. 원문의 핵심 내용은 빠짐없이 포함합니다
 3. 존댓말과 공식적 어투를 사용합니다
-4. 원본의 핵심 내용은 빠짐없이 포함합니다
+4. 문서번호, 날짜, 수신/발신 등 양식에 포함된 형식적 요소를 유지합니다
 5. 마을 행정에 맞는 적절한 용어를 사용합니다
 
 출력은 완성된 문서 텍스트만 제공하세요.`,
-          messages: [{
-            role: 'user',
-            content: `다음 내용을 "${templateLabel}" 양식으로 변환해주세요:\n\n${input}`,
-          }],
+          messages,
         }),
       });
 
@@ -60,18 +114,13 @@ export default function FormatPage({ params }: { params: { id: string } }) {
     }
   };
 
-  const copyResult = () => {
-    navigator.clipboard.writeText(result);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
+  const copyResult = () => { navigator.clipboard.writeText(result); setCopied(true); setTimeout(() => setCopied(false), 2000); };
   const downloadTxt = () => {
     const blob = new Blob([result], { type: 'text/plain;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${TEMPLATES.find((t) => t.value === template)?.label}_${new Date().toISOString().slice(0, 10)}.txt`;
+    a.download = `양식변환_${new Date().toISOString().slice(0, 10)}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -86,28 +135,89 @@ export default function FormatPage({ params }: { params: { id: string } }) {
           <h1 className="text-xl font-bold">텍스트 → 양식 변환</h1>
         </div>
 
+        {/* Step 1: 원문 입력 */}
         <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-6 mb-4">
-          <label className="block mb-4">
-            <span className="text-sm font-medium mb-2 block">문서 양식 선택</span>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {TEMPLATES.map((t) => (
-                <button key={t.value} onClick={() => setTemplate(t.value)} className={`p-3 rounded-xl text-left transition-all ${template === t.value ? 'bg-primary text-white' : 'bg-[var(--color-surface)] border border-[var(--color-border)] hover:border-primary'}`}>
-                  <span className="text-sm font-medium block">{t.label}</span>
-                  <span className={`text-xs ${template === t.value ? 'text-white/70' : 'text-[var(--color-text-secondary)]'}`}>{t.desc}</span>
-                </button>
-              ))}
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">1</span>
+            <span className="font-bold">원문 입력</span>
+            <span className="text-xs text-[var(--color-text-secondary)]">변환할 내용을 입력하거나 파일을 첨부하세요</span>
+          </div>
+
+          <input ref={sourceFileRef} type="file" accept="image/*,.txt,.pdf,.doc,.docx,.hwp,.hwpx" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleSourceFile(e.target.files[0]); e.target.value = ''; }} />
+
+          {sourceFile && sourcePreview && (
+            <div className="mb-3 relative">
+              <img src={sourcePreview} alt="원문 미리보기" className="max-h-48 rounded-xl border border-[var(--color-border)]" />
+              <button onClick={() => { setSourceFile(null); setSourcePreview(''); }} className="absolute top-2 right-2 p-1 rounded-full bg-black/50 text-white"><X className="w-4 h-4" /></button>
             </div>
-          </label>
+          )}
+          {sourceFile && !sourcePreview && (
+            <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]">
+              <FileText className="w-4 h-4 text-purple-500" />
+              <span className="text-sm flex-1 truncate">{sourceFile.name}</span>
+              <button onClick={() => { setSourceFile(null); setSourceText(''); }} className="text-xs text-error">제거</button>
+            </div>
+          )}
 
-          <label className="block mb-4">
-            <span className="text-sm font-medium mb-2 block">내용 입력</span>
-            <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={8} placeholder="변환할 내용을 자유롭게 입력하세요. 메모, 초안, 키워드 등 어떤 형태든 괜찮습니다.&#10;&#10;예: 12월 15일 마을회관에서 주민총회 합니다. 안건은 내년도 예산 심의, 마을 도로 보수 건. 저녁 6시." className="w-full px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl resize-none focus:outline-none focus:border-primary" />
-          </label>
+          <textarea value={sourceText} onChange={(e) => setSourceText(e.target.value)} rows={6} placeholder="변환할 내용을 자유롭게 입력하세요. 메모, 초안, 키워드 등 어떤 형태든 괜찮습니다.&#10;&#10;예: 12월 15일 마을회관에서 주민총회 합니다. 안건은 내년도 예산 심의, 마을 도로 보수 건. 저녁 6시." className="w-full px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl resize-none focus:outline-none focus:border-primary mb-2" />
 
-          <button onClick={convert} disabled={loading || !input.trim()} className="w-full py-3 rounded-xl bg-primary text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50">
-            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> 변환 중...</> : '양식 변환하기'}
+          <button onClick={() => sourceFileRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--color-border)] text-sm hover:border-primary">
+            <Upload className="w-4 h-4" /> 파일 첨부 (이미지, 문서)
           </button>
         </div>
+
+        {/* Step 2: 양식 업로드 */}
+        <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-6 mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">2</span>
+            <span className="font-bold">양식 업로드</span>
+            <span className="text-xs text-[var(--color-text-secondary)]">변환할 양식/템플릿을 업로드하세요</span>
+          </div>
+
+          <input ref={templateFileRef} type="file" accept="image/*,.txt,.pdf,.doc,.docx,.hwp,.hwpx" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleTemplateFile(e.target.files[0]); e.target.value = ''; }} />
+
+          {!templateFile ? (
+            <button onClick={() => templateFileRef.current?.click()} className="w-full h-36 rounded-xl border-2 border-dashed border-[var(--color-border)] flex flex-col items-center justify-center gap-2 hover:border-primary transition-colors">
+              <FileUp className="w-8 h-8 text-[var(--color-text-secondary)]" />
+              <span className="text-sm text-[var(--color-text-secondary)]">클릭하여 양식 파일 업로드</span>
+              <span className="text-xs text-[var(--color-text-secondary)]">이미지, HWP, DOCX, PDF, TXT</span>
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]">
+                <FileText className="w-4 h-4 text-purple-500" />
+                <span className="text-sm flex-1 truncate">{templateFile.name}</span>
+                <button onClick={() => setShowTemplatePreview(!showTemplatePreview)} className="flex items-center gap-1 text-xs text-primary hover:underline">
+                  <Eye className="w-3.5 h-3.5" /> {showTemplatePreview ? '닫기' : '미리보기'}
+                </button>
+                <button onClick={() => { setTemplateFile(null); setTemplatePreview(''); setTemplateText(''); setShowTemplatePreview(false); }} className="text-xs text-error">제거</button>
+              </div>
+
+              {showTemplatePreview && (
+                <div className="rounded-xl border border-[var(--color-border)] overflow-hidden">
+                  {templatePreview ? (
+                    <img src={templatePreview} alt="양식 미리보기" className="w-full max-h-96 object-contain bg-white" />
+                  ) : templateText ? (
+                    <div className="p-4 bg-[var(--color-surface)] max-h-64 overflow-auto">
+                      <pre className="text-xs whitespace-pre-wrap font-mono">{templateText}</pre>
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-sm text-[var(--color-text-secondary)]">미리보기를 지원하지 않는 파일 형식입니다</div>
+                  )}
+                </div>
+              )}
+
+              <button onClick={() => templateFileRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--color-border)] text-sm hover:border-primary">
+                <Upload className="w-4 h-4" /> 다른 양식으로 변경
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Convert Button */}
+        <button onClick={convert} disabled={loading || (!sourceText.trim() && !sourceFile) || (!templateFile && !templateText.trim())} className="w-full py-4 rounded-xl bg-primary text-white font-bold text-lg flex items-center justify-center gap-2 disabled:opacity-50 mb-4">
+          {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> 변환 중...</> : '양식 변환하기'}
+        </button>
 
         {error && <div className="p-4 rounded-xl bg-red-50 text-error text-sm mb-4">{error}</div>}
 
@@ -130,4 +240,12 @@ export default function FormatPage({ params }: { params: { id: string } }) {
       </div>
     </DashboardShell>
   );
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(',')[1]);
+    reader.readAsDataURL(file);
+  });
 }

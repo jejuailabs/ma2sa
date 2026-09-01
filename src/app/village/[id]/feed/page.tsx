@@ -30,7 +30,7 @@ export default function VillageFeedPage({ params }: { params: { id: string } }) 
           </div>
         </div>
         <div className="mb-6"><CategoryTabs active={activeTab} onChange={setActiveTab} /></div>
-        <PostComposer villageId={id} villageName={villageName} onCreated={reload} />
+        <PostComposer villageId={id} villageName={villageName} onCreated={reload} defaultType={activeTab} />
         <div className="space-y-4 md:grid md:grid-cols-2 md:gap-6 md:space-y-0">
           {loading ? <p className="col-span-2 text-center py-12 text-[var(--color-text-secondary)]">소식을 불러오는 중입니다...</p>
             : error ? <p className="col-span-2 text-center py-12 text-error">{error}</p>

@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-5',
         max_tokens: maxTokens,
         system: system || '당신은 한국 농촌 마을의 이장·사무장을 돕는 AI 비서입니다. 친절하고 실용적인 답변을 제공하세요.',
         messages,
