@@ -8,16 +8,21 @@ import { ThemeToggle } from './ThemeToggle';
 import { Avatar } from './Avatar';
 import { isOfficialRole } from '@/types/user';
 import { getSiteConfig } from '@/lib/firebase/admin';
+import type { CategoryTab } from './CategoryTabs';
 
-const NAV_ITEMS = [
-  { label: '마을 소식', href: '/#feed' },
-  { label: '이벤트', href: '/#feed-events' },
-  { label: '마을 특산품', href: '/#feed-products' },
-  { label: '소개', href: '/#hero' },
-  { label: '이용안내', href: '/#guide' },
+interface HeaderProps {
+  activeTab?: CategoryTab;
+  onTabChange?: (tab: CategoryTab) => void;
+  showTabs?: boolean;
+}
+
+const CATEGORY_TABS: { key: CategoryTab; label: string }[] = [
+  { key: 'news', label: '마을 소식' },
+  { key: 'event', label: '이벤트' },
+  { key: 'product', label: '마을 특산품' },
 ];
 
-export function Header() {
+export function Header({ activeTab, onTabChange, showTabs = false }: HeaderProps) {
   const { user, login, logout, loading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -30,42 +35,54 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 bg-[var(--color-bg)] border-b border-[var(--color-border)] transition-colors duration-300">
       {/* PC Header */}
-      <div className="hidden md:flex items-center justify-between max-w-content mx-auto px-6 h-16">
-        <Link href="/" className="flex items-center gap-2 text-primary font-bold text-xl">
-          <Home className="w-6 h-6" />
+      <div className="hidden md:flex items-center justify-between max-w-content mx-auto px-6 h-14">
+        <Link href="/" className="flex items-center gap-2 text-primary font-bold text-lg shrink-0">
+          <Home className="w-5 h-5" />
           <span>{logoText}</span>
         </Link>
 
-        <nav className="flex items-center gap-8">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="text-sm font-medium text-[var(--color-text-secondary)] hover:text-primary transition-colors"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        {showTabs && (
+          <nav className="flex items-center gap-1 ml-8">
+            {CATEGORY_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => onTabChange?.(tab.key)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                  activeTab === tab.key
+                    ? 'bg-primary text-white'
+                    : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)]'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        )}
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 ml-auto">
           <ThemeToggle />
+          <button className="p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">
+            <Bell className="w-5 h-5" />
+          </button>
           {loading ? (
             <div className="w-8 h-8 rounded-full bg-[var(--color-surface)] animate-pulse" />
           ) : user ? (
             <div className="relative">
               <button onClick={() => setProfileMenuOpen(!profileMenuOpen)} className="flex items-center gap-2">
                 <Avatar src={user.photoURL} name={user.displayName} size={32} />
-                <span className="text-sm font-medium text-[var(--color-text)]">{user.displayName}</span>
               </button>
               {profileMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-card shadow-lg py-2">
+                <div className="absolute right-0 top-full mt-2 w-48 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl shadow-lg py-2 z-50">
+                  <div className="px-4 py-2 border-b border-[var(--color-border)]">
+                    <p className="text-sm font-medium text-[var(--color-text)]">{user.displayName}</p>
+                    <p className="text-xs text-[var(--color-text-secondary)]">{user.email}</p>
+                  </div>
                   <Link href="/mypage" className="block px-4 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-surface)]" onClick={() => setProfileMenuOpen(false)}>
                     마이페이지
                   </Link>
                   {isOfficialRole(user.role) && user.villageId && (
                     <Link href={`/village/${user.villageId}`} className="block px-4 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-surface)]" onClick={() => setProfileMenuOpen(false)}>
-                      업무모드 전환
+                      업무모드
                     </Link>
                   )}
                   {user.isSiteAdmin && (
@@ -80,55 +97,55 @@ export function Header() {
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <button onClick={login} className="px-4 py-2 text-sm font-medium text-primary hover:bg-primary-light rounded-button transition-colors">
-                로그인
-              </button>
-              <button onClick={login} className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-button hover:opacity-90 transition-opacity">
-                회원가입
-              </button>
-            </div>
+            <button onClick={login} className="px-4 py-1.5 text-sm font-medium text-white bg-primary rounded-full hover:opacity-90 transition-opacity">
+              로그인
+            </button>
           )}
         </div>
       </div>
 
       {/* Mobile Header */}
-      <div className="flex md:hidden items-center justify-between px-4 h-14">
-        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-[var(--color-text)]">
-          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+      <div className="flex md:hidden items-center justify-between px-4 h-12">
+        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-1.5 text-[var(--color-text)]">
+          {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
-        <span className="font-semibold text-[var(--color-text)]">{logoText}</span>
-        <button className="p-2 text-[var(--color-text)]">
-          <Bell className="w-6 h-6" />
-        </button>
+        <Link href="/" className="font-semibold text-sm text-[var(--color-text)]">{logoText}</Link>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          {user ? (
+            <button onClick={() => setProfileMenuOpen(!profileMenuOpen)} className="p-1">
+              <Avatar src={user.photoURL} name={user.displayName} size={28} />
+            </button>
+          ) : (
+            <button onClick={login} className="px-3 py-1 text-xs font-medium text-white bg-primary rounded-full">로그인</button>
+          )}
+        </div>
       </div>
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-4 space-y-3">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="block py-2 text-sm text-[var(--color-text-secondary)]"
-              onClick={() => setMobileMenuOpen(false)}
+        <div className="md:hidden border-t border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 space-y-1">
+          {showTabs && CATEGORY_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => { onTabChange?.(tab.key); setMobileMenuOpen(false); }}
+              className={`block w-full text-left px-3 py-2 rounded-lg text-sm ${
+                activeTab === tab.key ? 'bg-primary-light text-primary font-medium' : 'text-[var(--color-text-secondary)]'
+              }`}
             >
-              {item.label}
-            </Link>
+              {tab.label}
+            </button>
           ))}
           {user?.isSiteAdmin && (
-            <Link href="/admin" className="flex items-center gap-2 py-2 text-sm text-primary font-medium" onClick={() => setMobileMenuOpen(false)}>
+            <Link href="/admin" className="flex items-center gap-2 px-3 py-2 text-sm text-primary font-medium" onClick={() => setMobileMenuOpen(false)}>
               <Shield className="w-4 h-4" /> 관리자
             </Link>
           )}
-          <div className="flex items-center justify-between pt-3 border-t border-[var(--color-border)]">
-            <ThemeToggle />
-            {user ? (
-              <button onClick={logout} className="text-sm text-error">로그아웃</button>
-            ) : (
-              <button onClick={login} className="text-sm text-primary font-medium">로그인</button>
-            )}
-          </div>
+          {user && (
+            <button onClick={() => { logout(); setMobileMenuOpen(false); }} className="block w-full text-left px-3 py-2 text-sm text-error">
+              로그아웃
+            </button>
+          )}
         </div>
       )}
     </header>

@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Home, Newspaper, ShoppingBasket, Bot, FolderOpen, Wallet, BookOpen } from 'lucide-react';
+import {
+  BarChart3, FileText, FolderOpen, Home, Newspaper, Settings, Users, Wallet, Calendar,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/lib/utils';
 
 interface SidebarMenuProps {
   villageId: string;
@@ -12,34 +13,37 @@ interface SidebarMenuProps {
   balance?: number;
 }
 
-const MENU_ITEMS = [
+const MAIN_MENU = [
   { icon: BarChart3, label: '대시보드', path: '' },
-  { icon: Home, label: '내 마을', path: '/info' },
   { icon: Newspaper, label: '마을 소식', path: '/feed' },
-  { icon: ShoppingBasket, label: '마을 특산품', path: '/products' },
-  { icon: Bot, label: 'AI 기능', path: '/ai' },
+  { icon: Users, label: '마을 주민', path: '/members' },
+  { icon: Calendar, label: '일정 관리', path: '/schedule' },
   { icon: FolderOpen, label: '문서함', path: '/docs' },
   { icon: Wallet, label: '자금 관리', path: '/finance' },
-  { icon: BookOpen, label: '장부 열람', path: '/ledger' },
 ];
 
-export function SidebarMenu({ villageId, villageName = '금성리 마을', balance = 1250000 }: SidebarMenuProps) {
+const MANAGE_MENU = [
+  { icon: Settings, label: '설정', path: '/settings' },
+];
+
+export function SidebarMenu({ villageId, villageName = '금성리 마을' }: SidebarMenuProps) {
   const pathname = usePathname();
   const basePath = `/village/${villageId}`;
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 shrink-0 h-[calc(100vh-64px)] sticky top-16 bg-[var(--color-bg)] border-r border-[var(--color-border)]">
-      {/* Village name */}
-      <div className="px-5 pt-6 pb-4">
+    <aside className="hidden lg:flex flex-col w-56 shrink-0 h-screen sticky top-0 bg-sidebar text-sidebar-text">
+      {/* Logo */}
+      <div className="px-5 pt-6 pb-5">
         <div className="flex items-center gap-2">
-          <span className="text-2xl">🍊</span>
-          <h2 className="font-bold text-lg text-[var(--color-text)]">{villageName}</h2>
+          <Home className="w-5 h-5" />
+          <span className="font-bold text-base">마을AI사무장</span>
         </div>
+        <p className="text-xs text-sidebar-text/60 mt-1">{villageName} 업무모드</p>
       </div>
 
-      {/* Menu */}
-      <nav className="flex-1 px-3 space-y-1">
-        {MENU_ITEMS.map((item) => {
+      {/* Main menu */}
+      <nav className="flex-1 px-3">
+        {MAIN_MENU.map((item) => {
           const href = basePath + item.path;
           const isActive = item.path === '' ? pathname === basePath : pathname.startsWith(href);
           return (
@@ -47,25 +51,41 @@ export function SidebarMenu({ villageId, villageName = '금성리 마을', balan
               key={item.label}
               href={href}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium mb-0.5 transition-colors',
                 isActive
-                  ? 'bg-secondary-light text-secondary dark:bg-secondary/10'
-                  : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)]'
+                  ? 'bg-white/15 text-white'
+                  : 'text-sidebar-text/70 hover:bg-white/10 hover:text-white'
               )}
             >
-              <item.icon className="w-5 h-5" />
+              <item.icon className="w-4 h-4" />
+              {item.label}
+            </Link>
+          );
+        })}
+
+        <div className="mt-6 mb-2 px-3">
+          <p className="text-[10px] uppercase tracking-wider text-sidebar-text/40 font-medium">관리</p>
+        </div>
+        {MANAGE_MENU.map((item) => {
+          const href = basePath + item.path;
+          const isActive = pathname.startsWith(href);
+          return (
+            <Link
+              key={item.label}
+              href={href}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium mb-0.5 transition-colors',
+                isActive
+                  ? 'bg-white/15 text-white'
+                  : 'text-sidebar-text/70 hover:bg-white/10 hover:text-white'
+              )}
+            >
+              <item.icon className="w-4 h-4" />
               {item.label}
             </Link>
           );
         })}
       </nav>
-
-      {/* Balance */}
-      <div className="px-5 py-5 border-t border-[var(--color-border)]">
-        <p className="text-xs text-[var(--color-text-secondary)] mb-1">자금현황</p>
-        <p className="text-lg font-bold text-[var(--color-text)]">{formatCurrency(balance)}</p>
-        <p className="text-xs text-[var(--color-text-secondary)] mt-1">클라우드</p>
-      </div>
     </aside>
   );
 }

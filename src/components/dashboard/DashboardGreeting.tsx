@@ -1,6 +1,5 @@
 'use client';
 
-import { Sun } from 'lucide-react';
 import { ROLE_LABELS, isOfficialRole, type UserRole } from '@/types/user';
 
 interface DashboardGreetingProps {
@@ -11,30 +10,21 @@ interface DashboardGreetingProps {
 
 export function DashboardGreeting({ userName, userRole, villageName }: DashboardGreetingProps) {
   const roleLabel = isOfficialRole(userRole as UserRole) ? ROLE_LABELS[userRole as UserRole] : '';
-  const displayName = roleLabel ? `${userName} ${roleLabel}님` : `${userName}님`;
+  const displayName = roleLabel ? `${userName}${roleLabel}님` : `${userName}님`;
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? '좋은 아침이에요.' : hour < 18 ? '좋은 오후에요.' : '수고하셨습니다.';
 
   return (
-    <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-secondary/90 to-secondary/70 text-white p-6 sm:p-8">
-      {/* Background illustration */}
-      <div className="absolute right-0 bottom-0 opacity-20">
-        <svg width="200" height="120" viewBox="0 0 200 120" fill="none">
-          <ellipse cx="140" cy="100" rx="80" ry="30" fill="white" />
-          <circle cx="100" cy="50" r="30" fill="white" />
-          <circle cx="140" cy="40" r="40" fill="white" />
-          <circle cx="70" cy="60" r="25" fill="white" />
-        </svg>
+    <div className="mb-8">
+      <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary-light text-primary text-xs font-medium rounded-full mb-3">
+        {villageName} · 맑음 24°C
       </div>
-
-      <div className="relative z-10 flex items-start justify-between">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold mb-1">{displayName},</h2>
-          <p className="text-white/80 text-sm sm:text-base">오늘도 행복한 {villageName}입니다</p>
-        </div>
-        <div className="flex items-center gap-2 bg-white/20 rounded-xl px-3 py-2">
-          <Sun className="w-5 h-5" />
-          <span className="text-sm font-medium">24°C</span>
-        </div>
-      </div>
+      <h1 className="text-2xl sm:text-3xl font-bold text-[var(--color-text)] mb-1">
+        {displayName}, {greeting}
+      </h1>
+      <p className="text-sm text-[var(--color-text-secondary)]">
+        오늘 처리할 일 3건과 새 가입 요청 2건이 있습니다.
+      </p>
     </div>
   );
 }

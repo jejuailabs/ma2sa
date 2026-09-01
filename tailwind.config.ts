@@ -7,32 +7,26 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#6C5CE7',
-          light: '#E8E4F8',
+          DEFAULT: '#2D6A4F',
+          light: '#E8F5E9',
+          dark: '#1B4332',
         },
         secondary: {
-          DEFAULT: '#4A7C59',
-          light: '#E8F5E9',
+          DEFAULT: '#52796F',
+          light: '#EDF2F0',
         },
+        accent: '#40916C',
         surface: {
-          light: '#F8F9FA',
-          dark: '#1A1A2E',
+          light: '#F7F9F8',
+          dark: '#162B22',
         },
         background: {
           light: '#FFFFFF',
-          dark: '#0F0F1A',
+          dark: '#0F1A14',
         },
-        'text-primary': {
-          light: '#1A1A2E',
-          dark: '#F1F1F1',
-        },
-        'text-secondary': {
-          light: '#6B7280',
-          dark: '#9CA3AF',
-        },
-        border: {
-          light: '#E5E7EB',
-          dark: '#2D2D44',
+        sidebar: {
+          DEFAULT: '#1B4332',
+          text: '#D8F3DC',
         },
         error: '#EF4444',
       },
@@ -40,7 +34,7 @@ const config: Config = {
         pretendard: ['Pretendard', 'sans-serif'],
       },
       maxWidth: {
-        content: '1200px',
+        content: '1280px',
       },
       borderRadius: {
         card: '12px',

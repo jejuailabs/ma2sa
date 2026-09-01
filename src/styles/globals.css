@@ -5,24 +5,30 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
 
 :root {
-  --color-primary: #6C5CE7;
-  --color-primary-light: #E8E4F8;
-  --color-secondary: #4A7C59;
-  --color-secondary-light: #E8F5E9;
+  --color-primary: #2D6A4F;
+  --color-primary-light: #E8F5E9;
+  --color-primary-dark: #1B4332;
+  --color-secondary: #52796F;
+  --color-secondary-light: #EDF2F0;
+  --color-accent: #40916C;
   --color-bg: #FFFFFF;
-  --color-surface: #F8F9FA;
+  --color-surface: #F7F9F8;
   --color-text: #1A1A2E;
   --color-text-secondary: #6B7280;
   --color-border: #E5E7EB;
   --color-error: #EF4444;
+  --color-sidebar: #1B4332;
+  --color-sidebar-text: #D8F3DC;
 }
 
 .dark {
-  --color-bg: #0F0F1A;
-  --color-surface: #1A1A2E;
+  --color-bg: #0F1A14;
+  --color-surface: #162B22;
   --color-text: #F1F1F1;
   --color-text-secondary: #9CA3AF;
-  --color-border: #2D2D44;
+  --color-border: #2D3D35;
+  --color-sidebar: #0F1A14;
+  --color-sidebar-text: #B7E4C7;
 }
 
 * {
@@ -47,51 +53,40 @@ body {
   }
 }
 
-/* 스크롤바 스타일 */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
   background: var(--color-border);
   border-radius: 3px;
 }
 
-/* 하단 탭바 safe area */
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* 애니메이션 */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes slideIn {
   from { transform: translateX(-100%); }
   to { transform: translateX(0); }
 }
-
 .animate-fadeIn {
   animation: fadeIn 200ms ease-out;
 }
-
 .animate-slideIn {
   animation: slideIn 200ms ease-out;
 }
-
-/* 스크롤바 숨기기 */
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
