@@ -16,51 +16,49 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ results: [] });
   }
 
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ results: [], error: 'API key not configured' }, { status: 500 });
-  }
-
   try {
-    const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location',
-      },
-      body: JSON.stringify({
-        textQuery: `${q} 마을`,
-        languageCode: 'ko',
-        regionCode: 'KR',
-        maxResultCount: 8,
-        locationBias: {
-          rectangle: {
-            low: { latitude: 33.0, longitude: 124.0 },
-            high: { latitude: 38.6, longitude: 132.0 },
-          },
-        },
-      }),
+    // Nominatim (OpenStreetMap) - 무료, API 키 불필요, 한국 행정구역 검색
+    const url = new URL('https://nominatim.openstreetmap.org/search');
+    url.searchParams.set('q', q);
+    url.searchParams.set('countrycodes', 'kr');
+    url.searchParams.set('format', 'json');
+    url.searchParams.set('addressdetails', '1');
+    url.searchParams.set('limit', '10');
+    url.searchParams.set('accept-language', 'ko');
+
+    const res = await fetch(url.toString(), {
+      headers: { 'User-Agent': 'MaEulAISamujang/1.0' },
     });
 
     if (!res.ok) {
-      const err = await res.text();
-      console.error('Places API error:', res.status, err);
-      return NextResponse.json({ results: [], error: 'Places API error' }, { status: 502 });
+      return NextResponse.json({ results: [] });
     }
 
-    const data = await res.json();
-    const results: PlaceResult[] = (data.places ?? []).map((p: any) => ({
-      id: p.id,
-      name: p.displayName?.text ?? '',
-      address: p.formattedAddress ?? '',
-      lat: p.location?.latitude ?? 0,
-      lng: p.location?.longitude ?? 0,
-    }));
+    const data = await res.json() as Array<{
+      place_id: number;
+      display_name: string;
+      lat: string;
+      lon: string;
+      address?: Record<string, string>;
+      type?: string;
+    }>;
+
+    const results: PlaceResult[] = data.map((p) => {
+      const parts = p.display_name.split(', ').reverse();
+      const name = parts[parts.length - 1] || p.display_name;
+      const address = parts.slice(0, -1).reverse().join(' ').replace('대한민국', '').trim();
+
+      return {
+        id: String(p.place_id),
+        name: name.trim(),
+        address: address || p.display_name,
+        lat: parseFloat(p.lat),
+        lng: parseFloat(p.lon),
+      };
+    });
 
     return NextResponse.json({ results });
-  } catch (e) {
-    console.error('Village search error:', e);
-    return NextResponse.json({ results: [], error: 'Search failed' }, { status: 500 });
+  } catch {
+    return NextResponse.json({ results: [] });
   }
 }
