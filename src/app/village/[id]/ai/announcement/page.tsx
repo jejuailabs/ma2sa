@@ -1,13 +1,19 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { FileSearch, Upload, Loader2, Copy, Check, X, FileText } from 'lucide-react';
+import { FileSearch, Upload, Loader2, Copy, Check, FileText, AlertCircle } from 'lucide-react';
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { saveAITask } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const PDF_TYPE = 'application/pdf';
+const EXTRACTABLE_EXTS = ['.docx', '.pptx', '.xlsx', '.hwpx', '.hwp', '.odt', '.odp', '.txt', '.md', '.csv', '.rtf'];
+
+function getFileExt(name: string) {
+  const dot = name.lastIndexOf('.');
+  return dot >= 0 ? name.slice(dot).toLowerCase() : '';
+}
 
 export default function AnnouncementPage({ params }: { params: { id: string } }) {
   const { id } = params;
@@ -18,29 +24,60 @@ export default function AnnouncementPage({ params }: { params: { id: string } })
   const [textInput, setTextInput] = useState('');
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(false);
+  const [extracting, setExtracting] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const handleFile = (f: File) => {
-    setFile(f);
+  const handleFile = async (f: File) => {
     setResult('');
     setError('');
-    if (IMAGE_TYPES.includes(f.type)) {
+
+    const ext = getFileExt(f.name);
+    const isImage = IMAGE_TYPES.includes(f.type);
+    const isPDF = f.type === PDF_TYPE || ext === '.pdf';
+
+    if (isImage) {
+      setFile(f);
       const reader = new FileReader();
       reader.onload = () => setPreview(reader.result as string);
       reader.readAsDataURL(f);
-    } else if (f.type === 'text/plain' || f.name.endsWith('.txt')) {
-      setPreview('');
-      const reader = new FileReader();
-      reader.onload = () => setTextInput(reader.result as string);
-      reader.readAsText(f);
-    } else if (f.type === PDF_TYPE || f.name.endsWith('.pdf')) {
-      setPreview('');
-    } else {
-      setPreview('');
-      setError(`${f.name} 파일은 직접 분석이 어렵습니다. 파일 내용을 복사해서 위 텍스트 입력란에 붙여넣기 해주세요.`);
-      setFile(null);
+      return;
     }
+
+    if (isPDF) {
+      setFile(f);
+      setPreview('');
+      return;
+    }
+
+    if (EXTRACTABLE_EXTS.includes(ext)) {
+      setFile(null);
+      setPreview('');
+      setExtracting(true);
+      try {
+        const formData = new FormData();
+        formData.append('file', f);
+        const res = await fetch('/api/ai/extract-text', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        if (data.unsupported) {
+          setError(data.unsupported);
+          return;
+        }
+        if (data.text) {
+          setTextInput((prev) => prev ? `${prev}\n\n${data.text}` : data.text);
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : '파일 텍스트 추출에 실패했습니다.');
+      } finally {
+        setExtracting(false);
+      }
+      return;
+    }
+
+    setFile(null);
+    setPreview('');
+    setError(`지원하지 않는 파일 형식입니다. (${ext || f.type})`);
   };
 
   const analyze = async () => {
@@ -52,7 +89,7 @@ export default function AnnouncementPage({ params }: { params: { id: string } })
 
       if (file) {
         const isImage = IMAGE_TYPES.includes(file.type);
-        const isPDF = file.type === PDF_TYPE || file.name.endsWith('.pdf');
+        const isPDF = file.type === PDF_TYPE || getFileExt(file.name) === '.pdf';
 
         if (isImage || isPDF) {
           const base64 = await fileToBase64(file);
@@ -127,19 +164,42 @@ export default function AnnouncementPage({ params }: { params: { id: string } })
         </div>
 
         <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-6 mb-4">
-          <p className="text-sm text-[var(--color-text-secondary)] mb-4">공고문·공문서의 내용을 붙여넣기하거나, 이미지/PDF를 업로드하면 AI가 핵심 내용을 분석합니다.</p>
+          <p className="text-sm text-[var(--color-text-secondary)] mb-4">
+            공고문·공문서를 분석합니다. 텍스트를 직접 붙여넣거나, 파일을 첨부하세요.
+          </p>
 
-          {/* Text input */}
+          {/* 지원 형식 안내 */}
+          <div className="grid sm:grid-cols-2 gap-3 mb-5">
+            <div className="px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30">
+              <p className="text-xs font-bold text-blue-700 dark:text-blue-300 mb-1">파일 첨부로 바로 분석</p>
+              <p className="text-xs text-blue-600 dark:text-blue-400">이미지 (JPG, PNG) · PDF</p>
+            </div>
+            <div className="px-4 py-3 rounded-xl bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/30">
+              <p className="text-xs font-bold text-green-700 dark:text-green-300 mb-1">첨부하면 텍스트 자동 추출</p>
+              <p className="text-xs text-green-600 dark:text-green-400">워드 (DOCX) · 한글 (HWPX) · PPT (PPTX)</p>
+            </div>
+          </div>
+
+          {/* 텍스트 입력 */}
+          <label className="block mb-1">
+            <span className="text-sm font-bold">텍스트 입력</span>
+          </label>
           <textarea
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
             rows={6}
-            placeholder="공고문 내용을 여기에 붙여넣기 하세요...&#10;&#10;한글(HWP), 워드, PPT 등의 파일은 내용을 복사해서 붙여넣기 해주세요.&#10;이미지나 PDF 파일은 아래에서 첨부할 수 있습니다."
+            placeholder="공고문 내용을 여기에 붙여넣기 하세요...&#10;&#10;또는 아래에서 파일을 첨부하면 자동으로 텍스트가 추출됩니다."
             className="w-full px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl resize-none focus:outline-none focus:border-primary mb-3"
           />
 
-          {/* File upload */}
-          <input ref={fileRef} type="file" accept="image/*,.pdf,.txt,.doc,.docx,.hwp,.hwpx,.ppt,.pptx,.xls,.xlsx,.rtf" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
+          {/* 파일 첨부 */}
+          <input ref={fileRef} type="file" accept="image/*,.pdf,.docx,.hwpx,.hwp,.pptx,.xlsx,.odt,.odp,.txt,.md,.csv,.rtf" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); e.target.value = ''; }} />
+
+          {extracting && (
+            <div className="flex items-center gap-2 px-4 py-3 mb-3 rounded-xl bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/30 text-sm text-green-700 dark:text-green-300">
+              <Loader2 className="w-4 h-4 animate-spin" /> 파일에서 텍스트를 추출하는 중...
+            </div>
+          )}
 
           {file ? (
             <div className="mb-4 space-y-3">
@@ -147,21 +207,27 @@ export default function AnnouncementPage({ params }: { params: { id: string } })
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]">
                 <FileText className="w-4 h-4 text-blue-500" />
                 <span className="text-sm flex-1 truncate">{file.name}</span>
+                <span className="text-xs text-[var(--color-text-secondary)]">{(file.size / 1024).toFixed(0)}KB</span>
                 <button onClick={() => { setFile(null); setPreview(''); }} className="text-xs text-error">제거</button>
               </div>
             </div>
           ) : (
-            <button onClick={() => fileRef.current?.click()} className="flex items-center gap-2 px-4 py-2 mb-4 rounded-lg border border-[var(--color-border)] text-sm hover:border-primary">
-              <Upload className="w-4 h-4" /> 파일 첨부 (이미지, PDF 등)
+            <button onClick={() => fileRef.current?.click()} disabled={extracting} className="flex items-center gap-2 px-4 py-2.5 mb-4 rounded-lg border border-dashed border-[var(--color-border)] text-sm hover:border-primary disabled:opacity-50 w-full justify-center">
+              <Upload className="w-4 h-4" /> 파일 첨부 (이미지 · PDF · 워드 · 한글 · PPT)
             </button>
           )}
 
-          <button onClick={analyze} disabled={loading || !canAnalyze} className="w-full py-3 rounded-xl bg-primary text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50">
+          <button onClick={analyze} disabled={loading || extracting || !canAnalyze} className="w-full py-3 rounded-xl bg-primary text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50">
             {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> 분석 중...</> : '분석하기'}
           </button>
         </div>
 
-        {error && <div className="p-4 rounded-xl bg-red-50 text-error text-sm mb-4">{error}</div>}
+        {error && (
+          <div className="flex items-start gap-2 p-4 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm mb-4">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
 
         {result && (
           <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-6">

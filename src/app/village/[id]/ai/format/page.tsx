@@ -26,7 +26,15 @@ export default function FormatPage({ params }: { params: { id: string } }) {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const handleSourceFile = (f: File) => {
+  const extractText = async (f: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', f);
+    const res = await fetch('/api/ai/extract-text', { method: 'POST', body: formData });
+    const data = await res.json();
+    return data.text || '';
+  };
+
+  const handleSourceFile = async (f: File) => {
     setSourceFile(f);
     if (f.type.startsWith('image/')) {
       const reader = new FileReader();
@@ -34,13 +42,12 @@ export default function FormatPage({ params }: { params: { id: string } }) {
       reader.readAsDataURL(f);
     } else {
       setSourcePreview('');
-      const reader = new FileReader();
-      reader.onload = () => setSourceText(reader.result as string);
-      reader.readAsText(f);
+      const text = await extractText(f);
+      if (text) setSourceText(text);
     }
   };
 
-  const handleTemplateFile = (f: File) => {
+  const handleTemplateFile = async (f: File) => {
     setTemplateFile(f);
     if (f.type.startsWith('image/')) {
       const reader = new FileReader();
@@ -48,9 +55,8 @@ export default function FormatPage({ params }: { params: { id: string } }) {
       reader.readAsDataURL(f);
     } else {
       setTemplatePreview('');
-      const reader = new FileReader();
-      reader.onload = () => setTemplateText(reader.result as string);
-      reader.readAsText(f);
+      const text = await extractText(f);
+      if (text) setTemplateText(text);
     }
   };
 
