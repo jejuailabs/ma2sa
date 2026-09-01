@@ -1,0 +1,17 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function userData() { return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data; }
+    function memberOf(villageId) { return signedIn() && userData().villageId == villageId; }
+    function adminOf(villageId) { return memberOf(villageId) && userData().role in ['leader', 'secretary']; }
+    match /villages/{villageId}/photos/{file=**} {
+      allow read: if true;
+      allow write: if memberOf(villageId) && request.resource.size < 10 * 1024 * 1024;
+    }
+    match /villages/{villageId}/{folder}/{file=**} {
+      allow read: if memberOf(villageId);
+      allow write: if adminOf(villageId) && request.resource.size < 100 * 1024 * 1024;
+    }
+  }
+}
