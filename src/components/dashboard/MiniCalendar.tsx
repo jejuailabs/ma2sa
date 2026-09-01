@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { isFirebaseConfigured, db } from '@/lib/firebase/config';
 import { collection, query, getDocs } from 'firebase/firestore';
+import { subscribeTodos } from '@/lib/firebase/firestore';
+import type { Todo } from '@/types/feed';
 
 interface CalendarEvent {
   id: string;
@@ -22,14 +24,16 @@ const TYPE_DOT: Record<string, string> = {
 
 interface MiniCalendarProps {
   villageId: string;
+  selectedDate: string;
+  onSelectDate: (date: string) => void;
 }
 
-export function MiniCalendar({ villageId }: MiniCalendarProps) {
+export function MiniCalendar({ villageId, selectedDate, onSelectDate }: MiniCalendarProps) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [selectedDate, setSelectedDate] = useState('');
+  const [todos, setTodos] = useState<Todo[]>([]);
 
   useEffect(() => {
     if (!isFirebaseConfigured || !db) return;
@@ -39,6 +43,8 @@ export function MiniCalendar({ villageId }: MiniCalendarProps) {
       })
       .catch(() => {});
   }, [villageId]);
+
+  useEffect(() => subscribeTodos(villageId, setTodos), [villageId]);
 
   const prevMonth = () => {
     if (month === 0) { setMonth(11); setYear(year - 1); }
@@ -61,7 +67,9 @@ export function MiniCalendar({ villageId }: MiniCalendarProps) {
     `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
   const eventsForDate = (dateStr: string) => events.filter((e) => e.date === dateStr);
+  const todosForDate = (dateStr: string) => todos.filter((todo) => todoDate(todo, todayStr) === dateStr);
   const selectedEvents = selectedDate ? eventsForDate(selectedDate) : [];
+  const selectedTodos = selectedDate ? todosForDate(selectedDate) : [];
 
   return (
     <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-5">
@@ -92,16 +100,18 @@ export function MiniCalendar({ villageId }: MiniCalendarProps) {
           const dateStr = getDateStr(day);
           const isToday = dateStr === todayStr;
           const dayEvents = eventsForDate(dateStr);
+          const dayTodos = todosForDate(dateStr);
           const isSelected = dateStr === selectedDate;
           const dayOfWeek = new Date(year, month, day).getDay();
 
           return (
             <button
               key={day}
-              onClick={() => setSelectedDate(isSelected ? '' : dateStr)}
+              onClick={() => onSelectDate(isSelected ? todayStr : dateStr)}
               className={`relative flex flex-col items-center py-1.5 rounded-lg text-xs transition-colors
                 ${isToday ? 'bg-primary text-white font-bold' : ''}
-                ${isSelected && !isToday ? 'bg-primary-light' : ''}
+                ${isSelected && !isToday ? 'bg-primary-light ring-1 ring-primary' : ''}
+                ${dayTodos.length > 0 && !isToday && !isSelected ? 'bg-secondary-light text-secondary font-bold' : ''}
                 ${!isToday && !isSelected ? 'hover:bg-[var(--color-surface)]' : ''}
                 ${dayOfWeek === 0 && !isToday ? 'text-red-400' : ''}
                 ${dayOfWeek === 6 && !isToday ? 'text-blue-400' : ''}
@@ -115,12 +125,15 @@ export function MiniCalendar({ villageId }: MiniCalendarProps) {
                   ))}
                 </div>
               )}
+              {dayTodos.length > 0 && dayEvents.length === 0 && (
+                <span className={`mt-0.5 h-1 w-1 rounded-full ${isToday ? 'bg-white' : 'bg-secondary'}`} />
+              )}
             </button>
           );
         })}
       </div>
 
-      {selectedEvents.length > 0 && (
+      {(selectedEvents.length > 0 || selectedTodos.length > 0) && (
         <div className="mt-3 pt-3 border-t border-[var(--color-border)] space-y-1.5">
           {selectedEvents.map((e) => (
             <div key={e.id} className="flex items-center gap-2 text-xs">
@@ -128,14 +141,25 @@ export function MiniCalendar({ villageId }: MiniCalendarProps) {
               <span className="truncate">{e.title}</span>
             </div>
           ))}
+          {selectedTodos.map((todo) => (
+            <div key={todo.id} className="flex items-center gap-2 text-xs">
+              <div className="w-2 h-2 rounded-full shrink-0 bg-secondary" />
+              <span className={todo.completed ? 'truncate line-through text-[var(--color-text-secondary)]' : 'truncate'}>{todo.title}</span>
+            </div>
+          ))}
         </div>
       )}
 
-      {selectedDate && selectedEvents.length === 0 && (
+      {selectedDate && selectedEvents.length === 0 && selectedTodos.length === 0 && (
         <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
           <p className="text-xs text-[var(--color-text-secondary)] text-center">이 날 일정이 없습니다</p>
         </div>
       )}
     </div>
   );
+}
+
+function todoDate(todo: Todo, fallback: string) {
+  if (!todo.dueDate) return fallback;
+  return `${todo.dueDate.getFullYear()}-${String(todo.dueDate.getMonth() + 1).padStart(2, '0')}-${String(todo.dueDate.getDate()).padStart(2, '0')}`;
 }

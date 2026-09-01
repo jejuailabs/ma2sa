@@ -11,9 +11,10 @@ interface TodoListProps {
   initialTodos: Todo[];
   villageId?: string;
   userId?: string;
+  selectedDate: string;
 }
 
-export function TodoList({ initialTodos, villageId, userId }: TodoListProps) {
+export function TodoList({ initialTodos, villageId, userId, selectedDate }: TodoListProps) {
   const [todos, setTodos] = useState<Todo[]>(initialTodos);
   const [newTodoTitle, setNewTodoTitle] = useState('');
 
@@ -40,11 +41,11 @@ export function TodoList({ initialTodos, villageId, userId }: TodoListProps) {
       assignedTo: '',
       createdBy: '',
       createdAt: new Date(),
-      dueDate: null,
+      dueDate: new Date(`${selectedDate}T00:00:00`),
     };
     setTodos((prev) => [...prev, todo]);
     setNewTodoTitle('');
-    if (villageId && userId && isFirebaseConfigured) await addTodoRemote(villageId, todo.title, userId);
+    if (villageId && userId && isFirebaseConfigured) await addTodoRemote(villageId, todo.title, userId, todo.dueDate);
   };
 
   const removeTodo = async (id: string) => {
@@ -52,17 +53,21 @@ export function TodoList({ initialTodos, villageId, userId }: TodoListProps) {
     if (villageId && isFirebaseConfigured) await deleteTodoRemote(villageId, id);
   };
 
+  const visibleTodos = todos.filter((todo) => todoDate(todo) === selectedDate);
+  const selectedDateLabel = new Date(`${selectedDate}T00:00:00`).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
+
   return (
     <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-card p-5">
-      <h3 className="font-semibold text-[var(--color-text)] mb-4">오늘 할 일</h3>
+      <h3 className="font-semibold text-[var(--color-text)] mb-1">{selectedDateLabel} 할 일</h3>
+      <p className="mb-4 text-xs text-[var(--color-text-secondary)]">달력에서 선택한 날짜에 할 일을 추가합니다.</p>
 
       <div className="space-y-2 mb-4">
-        {todos.length === 0 && (
+        {visibleTodos.length === 0 && (
           <p className="text-sm text-[var(--color-text-secondary)] py-4 text-center">
             할 일을 추가해보세요
           </p>
         )}
-        {todos.map((todo) => (
+        {visibleTodos.map((todo) => (
           <div key={todo.id} className="flex items-center gap-3 group">
             <button
               onClick={() => void toggleTodo(todo.id)}
@@ -106,7 +111,7 @@ export function TodoList({ initialTodos, villageId, userId }: TodoListProps) {
           value={newTodoTitle}
           onChange={(e) => setNewTodoTitle(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && void addTodo()}
-          placeholder="할 일 추가..."
+          placeholder={`${selectedDateLabel} 할 일 추가...`}
           className="flex-1 px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-secondary)] focus:outline-none focus:border-secondary"
         />
         <button
@@ -118,4 +123,9 @@ export function TodoList({ initialTodos, villageId, userId }: TodoListProps) {
       </div>
     </div>
   );
+}
+
+function todoDate(todo: Todo) {
+  const date = todo.dueDate || new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }

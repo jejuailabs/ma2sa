@@ -4,10 +4,13 @@ service firebase.storage {
     function signedIn() { return request.auth != null; }
     function userData() { return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data; }
     function villageMember(villageId) {
-      return signedIn() && firestore.exists(/databases/(default)/documents/villages/$(villageId)/members/$(request.auth.uid));
+      return signedIn()
+        && firestore.get(/databases/(default)/documents/villages/$(villageId)/members/$(request.auth.uid)).data.status == 'active';
     }
     function memberOf(villageId) {
-      return signedIn() && (userData().villageId == villageId || villageMember(villageId));
+      // 사진 업로드는 마을 가입 기록을 우선 확인한다. 사용자 프로필 값이 늦게
+      // 반영되어도 active 가입자는 자신의 마을 사진을 올릴 수 있다.
+      return villageMember(villageId) || (signedIn() && userData().villageId == villageId);
     }
     function adminOf(villageId) {
       return memberOf(villageId) && userData().role in ['leader', 'secretary'];

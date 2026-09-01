@@ -28,6 +28,7 @@ export default function DashboardPage({ params }: { params: { id: string } }) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [documents, setDocuments] = useState<VillageDocument[]>([]);
   const [error, setError] = useState('');
+  const [selectedTodoDate, setSelectedTodoDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
     if (!isFirebaseConfigured) return;
@@ -87,9 +88,9 @@ export default function DashboardPage({ params }: { params: { id: string } }) {
 
             {/* Right sidebar */}
             <aside className="hidden xl:block w-72 shrink-0 space-y-4">
-              <MiniCalendar villageId={id} />
+              <MiniCalendar villageId={id} selectedDate={selectedTodoDate} onSelectDate={setSelectedTodoDate} />
 
-              <TodoList initialTodos={[]} villageId={id} userId={user?.uid} />
+              <TodoList initialTodos={[]} villageId={id} userId={user?.uid} selectedDate={selectedTodoDate} />
 
               {/* Budget card */}
               <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-5">

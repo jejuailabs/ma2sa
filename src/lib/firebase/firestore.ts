@@ -133,9 +133,9 @@ export function subscribeTodos(villageId: string, callback: (todos: Todo[]) => v
   return onSnapshot(query(collection(db, 'villages', villageId, 'todos'), orderBy('createdAt', 'asc')), (snapshot) => callback(snapshot.docs.map(mapTodo)));
 }
 
-export async function addTodo(villageId: string, title: string, createdBy: string): Promise<string> {
+export async function addTodo(villageId: string, title: string, createdBy: string, dueDate: Date | null = null): Promise<string> {
   if (!db) throw new Error('Firebase가 설정되지 않았습니다.');
-  const ref = await addDoc(collection(db, 'villages', villageId, 'todos'), { title, completed: false, assignedTo: createdBy, createdBy, createdAt: serverTimestamp(), dueDate: null });
+  const ref = await addDoc(collection(db, 'villages', villageId, 'todos'), { title, completed: false, assignedTo: createdBy, createdBy, createdAt: serverTimestamp(), dueDate });
   return ref.id;
 }
 
