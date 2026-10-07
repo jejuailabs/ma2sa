@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Sparkles, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getSiteConfig, DEFAULT_SITE_CONFIG, type SiteConfig } from '@/lib/firebase/admin';
 
@@ -43,21 +44,27 @@ export function HeroSection() {
         <p className="text-sm sm:text-base text-white/70 mb-6 whitespace-pre-line">
           {config.bannerSubtitle}
         </p>
-        {user?.villageId ? (
-          <Link
-            href={`/village/${user.villageId}`}
-            className="inline-flex items-center gap-1 px-5 py-2.5 bg-white text-primary font-medium text-sm rounded-full hover:bg-white/90 transition-colors"
-          >
-            내 마을 들어가기 &rsaquo;
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href="/experience" className="inline-flex min-h-[44px] items-center gap-2 px-5 py-2.5 bg-white text-primary font-semibold text-sm rounded-full hover:bg-white/90 transition-colors">
+            <Sparkles className="w-4 h-4" aria-hidden="true" /> 로그인 없이 무료 체험 <ArrowRight className="w-4 h-4" aria-hidden="true" />
           </Link>
-        ) : (
-          <Link
-            href="/village/setup"
-            className="inline-flex items-center gap-1 px-5 py-2.5 bg-white text-primary font-medium text-sm rounded-full hover:bg-white/90 transition-colors"
-          >
-            우리 마을 시작하기 &rsaquo;
-          </Link>
-        )}
+          {user?.villageId ? (
+            <Link
+              href={`/village/${user.villageId}`}
+              className="inline-flex items-center gap-1 px-5 py-2.5 bg-white text-primary font-medium text-sm rounded-full hover:bg-white/90 transition-colors"
+            >
+              내 마을 들어가기 &rsaquo;
+            </Link>
+          ) : (
+            <Link
+              href="/village/setup"
+              className="inline-flex items-center gap-1 px-5 py-2.5 bg-white text-primary font-medium text-sm rounded-full hover:bg-white/90 transition-colors"
+            >
+              우리 마을 시작하기 &rsaquo;
+            </Link>
+          )}
+        </div>
+        <p className="mt-3 text-xs text-white/80">말로 만드는 사업계획서와 마을 AI 도구를 직접 써보세요.</p>
       </div>
     </section>
   );

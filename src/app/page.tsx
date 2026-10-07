@@ -59,6 +59,9 @@ export default function HomePage() {
                     {label}
                   </button>
                 ))}
+                <Link href="/experience" className="flex min-h-[44px] items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-primary hover:bg-[var(--color-surface)]">
+                  <Sparkles className="w-4 h-4" aria-hidden="true" /> 무료 체험
+                </Link>
               </nav>
               <p className="text-xs text-[var(--color-text-secondary)] mt-6 px-3">공개 소식은 로그인 없이 볼 수 있습니다.</p>
             </div>
