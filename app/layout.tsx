@@ -1,11 +1,6 @@
 import type { Metadata } from 'next';
-import { Geist } from 'next/font/google';
+import { AppProviders } from '@/components/app-providers';
 import './globals.css';
-
-const geist = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
 
 export const metadata: Metadata = {
   title: '마을AI사무장 | 우리 마을의 일을 더 가볍게',
@@ -15,7 +10,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
-      <body className={`${geist.variable} antialiased`}>{children}</body>
+      <body className="antialiased">
+        <AppProviders>{children}</AppProviders>
+      </body>
     </html>
   );
 }

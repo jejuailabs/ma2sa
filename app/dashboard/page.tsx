@@ -14,6 +14,7 @@ import {
   Home,
   Image as ImageIcon,
   LogOut,
+  LoaderCircle,
   Menu,
   Mic2,
   Moon,
@@ -27,20 +28,23 @@ import {
   Volume2,
   WalletCards,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
+import { useAuth } from '@/components/auth-provider';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress';
+import { Progress, ProgressLabel } from '@/components/ui/progress';
 
 const menuItems = [
   { label: '대시보드', icon: Home, active: true },
   { label: '마을 소식', icon: BookOpenText },
   { label: '마을 주민', icon: Users },
   { label: '일정 관리', icon: CalendarDays },
-  { label: '문서함', icon: FileArchive },
+  { label: '문서함', icon: FileArchive, path: 'docs' },
   { label: '자금 관리', icon: WalletCards },
 ];
 
@@ -52,12 +56,12 @@ const stats = [
 ];
 
 const aiTools = [
-  { label: '공고문 분석', description: '지원사업 핵심만 추출', icon: FileText, color: 'text-emerald-700 bg-emerald-50' },
-  { label: '영수증 → 엑셀', description: '사진으로 장부 정리', icon: ReceiptText, color: 'text-orange-700 bg-orange-50' },
-  { label: '문서 양식 변환', description: '초안을 공문서로 변환', icon: FileSpreadsheet, color: 'text-blue-700 bg-blue-50' },
-  { label: '회의록 자동 정리', description: '녹음에서 결정사항 추출', icon: Mic2, color: 'text-purple-700 bg-purple-50' },
-  { label: '대신 읽어주기', description: '방송용 음성 만들기', icon: Volume2, color: 'text-rose-700 bg-rose-50' },
-  { label: '마을 문서함', description: '생성 문서 한곳에 보관', icon: FileArchive, color: 'text-slate-700 bg-slate-100' },
+  { label: '공고문 분석', slug: 'announcement', description: '지원사업 핵심만 추출', icon: FileText, color: 'text-emerald-700 bg-emerald-50' },
+  { label: '영수증 → 엑셀', slug: 'receipt', description: '사진으로 장부 정리', icon: ReceiptText, color: 'text-orange-700 bg-orange-50' },
+  { label: '문서 양식 변환', slug: 'format', description: '초안을 공문서로 변환', icon: FileSpreadsheet, color: 'text-blue-700 bg-blue-50' },
+  { label: '회의록 자동 정리', slug: 'transcribe', description: '녹음에서 결정사항 추출', icon: Mic2, color: 'text-purple-700 bg-purple-50' },
+  { label: '대신 읽어주기', slug: 'narration', description: '방송용 음성 만들기', icon: Volume2, color: 'text-rose-700 bg-rose-50' },
+  { label: '마을 문서함', slug: 'docs', description: '생성 문서 한곳에 보관', icon: FileArchive, color: 'text-slate-700 bg-slate-100' },
 ];
 
 const initialTasks = [
@@ -68,26 +72,45 @@ const initialTasks = [
 ];
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { user, profile, loading, logout } = useAuth();
   const [tasks, setTasks] = useState(initialTasks);
   const [dark, setDark] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const completed = tasks.filter((task) => task.done).length;
 
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
+    if (!profile?.villageId) {
+      router.replace('/village/setup');
+      return;
+    }
+    if (profile.role !== 'leader' && profile.role !== 'secretary') router.replace('/');
+  }, [loading, user, profile, router]);
+
   function toggleTask(id: number) {
     setTasks((current) => current.map((task) => (task.id === id ? { ...task, done: !task.done } : task)));
+  }
+
+  if (loading || !user || !profile?.villageId || (profile.role !== 'leader' && profile.role !== 'secretary')) {
+    return <main className="grid min-h-screen place-items-center bg-background"><LoaderCircle className="size-7 animate-spin text-primary" /></main>;
   }
 
   return (
     <div className={dark ? 'dark' : ''}>
       <div className="min-h-screen bg-background text-foreground transition-colors lg:grid lg:grid-cols-[240px_1fr]">
         <aside className="hidden min-h-screen flex-col border-r bg-[#173f32] p-4 text-white lg:flex">
-          <a href="/" className="mb-8 flex items-center gap-3 px-2 py-2">
+          <Link href="/" className="mb-8 flex items-center gap-3 px-2 py-2">
             <span className="grid size-10 place-items-center rounded-xl bg-white/12"><Home className="size-5" /></span>
             <div>
               <p className="font-bold tracking-[-0.03em]">마을AI사무장</p>
-              <p className="text-[11px] text-white/55">금성리 업무모드</p>
+              <p className="text-[11px] text-white/55">업무모드</p>
             </div>
-          </a>
+          </Link>
           <nav className="space-y-1" aria-label="업무 메뉴">
             {menuItems.map((item) => {
               const Icon = item.icon;
@@ -95,7 +118,7 @@ export default function DashboardPage() {
                 <button
                   key={item.label}
                   type="button"
-                  onClick={() => !item.active && setToast(`${item.label} 메뉴는 다음 구현 단계에서 연결됩니다.`)}
+                  onClick={() => !item.active && (item.path ? router.push(`/village/${profile.villageId}/${item.path}`) : setToast(`${item.label} 메뉴는 다음 구현 단계에서 연결됩니다.`))}
                   className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${item.active ? 'bg-white text-[#173f32]' : 'text-white/68 hover:bg-white/10 hover:text-white'}`}
                 >
                   <Icon className="size-[18px]" /> {item.label}
@@ -112,10 +135,10 @@ export default function DashboardPage() {
           <div className="mt-auto flex items-center gap-3 rounded-2xl bg-white/8 p-3">
             <Avatar><AvatarFallback className="bg-[#d9e9df] text-xs font-bold text-[#173f32]">김</AvatarFallback></Avatar>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">김사무장</p>
-              <p className="text-[11px] text-white/48">금성리 마을</p>
+              <p className="truncate text-sm font-semibold">{profile.displayName}</p>
+              <p className="text-[11px] text-white/48">{profile.role === 'leader' ? '이장' : '사무장'}</p>
             </div>
-            <LogOut className="size-4 text-white/50" />
+            <button type="button" aria-label="로그아웃" onClick={() => logout().then(() => router.replace('/'))}><LogOut className="size-4 text-white/50" /></button>
           </div>
         </aside>
 
@@ -123,7 +146,7 @@ export default function DashboardPage() {
           <header className="sticky top-0 z-30 border-b bg-background/92 backdrop-blur-xl">
             <div className="flex h-16 items-center gap-3 px-4 sm:px-7 lg:px-9">
               <Button variant="ghost" size="icon" className="lg:hidden" aria-label="메뉴 열기"><Menu /></Button>
-              <a href="/" className="hidden items-center gap-1 text-sm text-muted-foreground hover:text-foreground sm:flex"><ChevronLeft className="size-4" /> 주민 화면</a>
+              <Link href="/" className="hidden items-center gap-1 text-sm text-muted-foreground hover:text-foreground sm:flex"><ChevronLeft className="size-4" /> 주민 화면</Link>
               <div className="ml-auto flex items-center gap-1">
                 <Button variant="ghost" size="icon" aria-label={dark ? '라이트 모드' : '다크 모드'} onClick={() => setDark((value) => !value)}>{dark ? <Sun /> : <Moon />}</Button>
                 <Button variant="ghost" size="icon" aria-label="검색"><Search /></Button>
@@ -137,7 +160,7 @@ export default function DashboardPage() {
             <section className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <Badge variant="secondary" className="mb-3">금성리 마을 · 맑음 24°C</Badge>
-                <h1 className="text-3xl font-bold tracking-[-0.05em] sm:text-4xl">김사무장님, 좋은 아침이에요.</h1>
+                <h1 className="text-3xl font-bold tracking-[-0.05em] sm:text-4xl">{profile.displayName}님, 좋은 아침이에요.</h1>
                 <p className="mt-2 text-sm text-muted-foreground">오늘 처리할 일 3건과 새 가입 요청 2건이 있습니다.</p>
               </div>
               <Button className="h-11 w-fit rounded-full px-5" onClick={() => setToast('새 소식 작성 화면을 준비했습니다.')}><Plus /> 새 소식 작성</Button>
@@ -179,7 +202,7 @@ export default function DashboardPage() {
                         <button
                           key={tool.label}
                           type="button"
-                          onClick={() => setToast(`${tool.label} 기능 화면을 여는 흐름을 준비했습니다.`)}
+                          onClick={() => router.push(tool.slug === 'docs' ? `/village/${profile.villageId}/docs` : `/village/${profile.villageId}/ai/${tool.slug}`)}
                           className="group rounded-2xl border bg-background p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md"
                         >
                           <span className={`mb-4 grid size-10 place-items-center rounded-xl ${tool.color}`}><Icon className="size-5" /></span>
@@ -239,7 +262,7 @@ export default function DashboardPage() {
                   <CardContent>
                     <Progress value={42} className="gap-2">
                       <ProgressLabel>사용 금액</ProgressLabel>
-                      <ProgressValue>{'1,250,000원'}</ProgressValue>
+                      <span className="ml-auto text-sm tabular-nums text-muted-foreground">1,250,000원</span>
                     </Progress>
                     <div className="mt-5 grid grid-cols-2 gap-3">
                       <div className="rounded-xl bg-muted p-3"><p className="text-xs text-muted-foreground">총 예산</p><p className="mt-1 font-bold">3,000,000원</p></div>
@@ -268,7 +291,7 @@ export default function DashboardPage() {
             ['홈', Home], ['할 일', ClipboardCheck], ['AI 기능', Sparkles], ['더보기', Menu],
           ].map(([label, Icon], index) => {
             const NavIcon = Icon as typeof Home;
-            return <button key={label as string} type="button" onClick={() => index !== 0 && setToast(`${label} 메뉴를 선택했습니다.`)} className={`flex min-h-12 flex-col items-center justify-center gap-1 text-[11px] font-semibold ${index === 0 ? 'text-primary' : 'text-muted-foreground'}`}><NavIcon className="size-5" />{label as string}</button>;
+            return <button key={label as string} type="button" onClick={() => index === 2 ? router.push(`/village/${profile.villageId}/ai`) : index !== 0 && setToast(`${label} 메뉴를 선택했습니다.`)} className={`flex min-h-12 flex-col items-center justify-center gap-1 text-[11px] font-semibold ${index === 0 ? 'text-primary' : 'text-muted-foreground'}`}><NavIcon className="size-5" />{label as string}</button>;
           })}
         </nav>
 

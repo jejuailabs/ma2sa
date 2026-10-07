@@ -3,7 +3,6 @@
 import {
   Bell,
   CalendarDays,
-  ChevronRight,
   FileText,
   Heart,
   Home,
@@ -18,12 +17,14 @@ import {
   UserRound,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { LoginButton } from '@/components/login-button';
 
 type FeedType = 'news' | 'event' | 'product';
 
@@ -105,14 +106,12 @@ export default function HomePage() {
       <div className="min-h-screen bg-background text-foreground transition-colors">
         <header className="sticky top-0 z-40 border-b bg-background/92 backdrop-blur-xl">
           <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 sm:px-6 lg:px-10">
-            <Button variant="ghost" size="icon" className="lg:hidden" aria-label="메뉴 열기">
-              <Menu />
-            </Button>
+            <Link href="/experience" className="hidden size-11 shrink-0 items-center justify-center rounded-xl text-primary sm:inline-flex lg:hidden" aria-label="체험관 메뉴 열기"><Menu className="size-5" /></Link>
             <a href="#main" className="mr-auto flex items-center gap-2.5" aria-label="마을AI사무장 홈">
               <span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
                 <Home className="size-[18px]" strokeWidth={2.4} />
               </span>
-              <span className="text-[17px] font-bold tracking-[-0.04em]">마을AI사무장</span>
+              <span className="hidden text-[15px] font-bold tracking-[-0.04em] min-[360px]:inline sm:text-[17px]">마을AI사무장</span>
             </a>
 
             <nav className="hidden items-center gap-1 lg:flex" aria-label="주요 메뉴">
@@ -128,9 +127,12 @@ export default function HomePage() {
               ))}
             </nav>
 
+            <Link href="/experience" className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full bg-secondary px-3 text-sm font-semibold text-primary transition-colors hover:bg-accent sm:px-4"><Sparkles className="size-4" /><span className="hidden sm:inline">무료 </span>체험</Link>
+
             <Button
               variant="ghost"
               size="icon"
+              className="hidden sm:inline-flex"
               aria-label={dark ? '라이트 모드로 전환' : '다크 모드로 전환'}
               onClick={() => setDark((value) => !value)}
             >
@@ -139,12 +141,7 @@ export default function HomePage() {
             <Button variant="ghost" size="icon" className="hidden sm:inline-flex" aria-label="알림">
               <Bell />
             </Button>
-            <Button
-              className="rounded-full px-4"
-              onClick={() => setNotice('로그인 연결 준비가 완료되었습니다. 다음 단계에서 Google 인증을 연결합니다.')}
-            >
-              로그인
-            </Button>
+            <LoginButton className="min-h-11 rounded-full px-4" onMessage={setNotice} />
           </div>
         </header>
 
@@ -160,13 +157,7 @@ export default function HomePage() {
                 전국 마을의 이야기와 행사, 정성껏 기른 특산품을 만나보세요.
               </p>
             </div>
-            <Button
-              variant="secondary"
-              className="h-11 w-fit rounded-full bg-white px-5 text-[#19543e] hover:bg-white/90"
-              onClick={() => setNotice('로그인하면 우리 마을 소식을 직접 작성할 수 있어요.')}
-            >
-              우리 마을 시작하기 <ChevronRight />
-            </Button>
+            <div className="flex flex-wrap gap-3"><Link href="/experience" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white px-5 text-sm font-semibold text-[#19543e] hover:bg-white/90"><Sparkles className="size-4" /> 로그인 없이 무료 체험</Link><LoginButton variant="secondary" label="우리 마을 시작하기" showArrow className="min-h-12 w-fit rounded-full bg-white/15 px-5 text-white hover:bg-white/25" onMessage={setNotice} /></div>
           </section>
 
           <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)_280px]">
@@ -305,15 +296,13 @@ export default function HomePage() {
                     <p className="mt-2 text-sm leading-6 text-white/68">
                       공고문 분석부터 회의록 정리까지, 반복 업무를 AI가 도와드려요.
                     </p>
-                    <Button
+                    <LoginButton
                       variant="secondary"
+                      label="업무모드 살펴보기"
+                      showArrow
                       className="mt-5 h-10 w-full rounded-xl bg-white text-[#173f32] hover:bg-white/90"
-                      onClick={() => {
-                        window.location.href = '/dashboard';
-                      }}
-                    >
-                      업무모드 살펴보기 <ChevronRight />
-                    </Button>
+                      onMessage={setNotice}
+                    />
                   </CardContent>
                 </Card>
                 <Card className="border-0 shadow-sm ring-border">

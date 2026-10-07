@@ -1,0 +1,3 @@
+import { AudioLines, BookOpenText, CalendarDays, FileArchive, FileText, Home, Mic, ReceiptText, ScanText, Users, Volume2, WalletCards, type LucideIcon } from 'lucide-react';
+const icons: Record<string, LucideIcon> = { audio: AudioLines, news: BookOpenText, calendar: CalendarDays, folder: FileArchive, file: FileText, home: Home, mic: Mic, receipt: ReceiptText, scan: ScanText, users: Users, speaker: Volume2, wallet: WalletCards };
+export function ExperienceIcon({ name, className }: { name: string; className?: string }) { const Icon = icons[name] || FileText; return <Icon aria-hidden="true" className={className} strokeWidth={1.8} />; }
