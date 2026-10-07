@@ -3,6 +3,7 @@ import { ArrowRight, Check, Mic, ShieldCheck, Sparkles } from 'lucide-react';
 import { ExperienceIcon } from '@/components/experience/icon';
 import { experienceTools } from '@/lib/experience/catalog';
 import { ExperienceQr } from '@/components/experience/qr-share';
+import { NewPlanLink } from '@/components/experience/new-plan-link';
 
 export default function ExperiencePage() {
   return <>
@@ -13,12 +14,12 @@ export default function ExperiencePage() {
         <h2>말로 만드는<br />사업계획서</h2>
         <p>무엇부터 써야 할지 막막할 때,<br />질문에 답하는 것부터 시작해요.</p>
         <span className="exp-hero-facts"><span><Check size={15} /> 쉬운 질문 8개</span><span><Check size={15} /> 말하기·직접 입력</span></span>
-        <Link href="/experience/business-plan" className="exp-hero-cta">우리 마을 계획서 만들기 <ArrowRight size={20} /></Link>
-        <Link href="/live-plan" className="exp-live-cta" aria-label="AI와 대화하기" aria-describedby="exp-live-description">
+        <NewPlanLink href="/experience/business-plan" className="exp-hero-cta">우리 마을 계획서 만들기 <ArrowRight size={20} /></NewPlanLink>
+        <NewPlanLink mode="live" href="/live-plan" className="exp-live-cta" aria-label="AI와 대화하기" aria-describedby="exp-live-description">
           <span className="exp-live-icon"><ExperienceIcon name="conversation" /></span>
           <span className="exp-live-copy"><strong>AI와 대화하기</strong><small id="exp-live-description">AI가 묻고, 말이나 글로 답해요</small></span>
           <ArrowRight size={18} />
-        </Link>
+        </NewPlanLink>
         <Link href="/experience/business-plan/sample" className="exp-hero-sample-link">새터 반찬 두레 샘플 보기 <ArrowRight size={15}/></Link>
       </div>
       <ExperienceQr />

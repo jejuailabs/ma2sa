@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { NewPlanLink } from './new-plan-link';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, ChevronDown, Copy, Download, LoaderCircle, MessageCircle, Sparkles } from 'lucide-react';
 import { saeteoSample as sample, sampleBasics, sampleResult } from '@/lib/experience/saeteo-sample';
@@ -43,7 +43,7 @@ export function PlanSample() {
   }
 
   return <>
-    <div className="exp-sample-heading"><span className="exp-demo-pill">가상 샘플</span><Link href="/experience/business-plan">우리 이야기로 작성 <ArrowRight size={15}/></Link></div>
+    <div className="exp-sample-heading"><span className="exp-demo-pill">가상 샘플</span><NewPlanLink href="/experience/business-plan">우리 이야기로 작성 <ArrowRight size={15}/></NewPlanLink></div>
     <h1 ref={heading} tabIndex={-1} className="exp-question-heading">새터 반찬 두레의<br />이야기가 계획서가 되기까지</h1>
     <p className="exp-question-hint">미리 채워 둔 샘플로 작성 과정을 따라가 보세요.</p>
     <nav ref={stepNavigation} className="exp-sample-steps" aria-label="샘플 작성 단계">{steps.map((name, index) => <button key={name} aria-current={step === index ? 'step' : undefined} onClick={() => go(index)}><span>{index + 1}</span>{name}</button>)}</nav>

@@ -2,12 +2,15 @@
 import Link from 'next/link';
 import { PlanDetails } from './plan-details';
 import { ManualPlanCopy, usePlanSharing } from './plan-sharing';
+import { PlanFiles } from './plan-files';
+import { saveBlob } from '@/lib/experience/download';
+import type { PlanBackup } from '@/lib/experience/plan-backup';
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type SetStateAction } from 'react';
 import { ArrowLeft, ArrowRight, Check, ChevronDown, Copy, Download, LoaderCircle, Mic, PencilLine, RotateCcw, Share2, ShieldCheck, Sparkles, Square } from 'lucide-react';
 import { blankBasics, budgetSummary, planQuestions, planLabels, planFilename, operationLabels, type PlanBasics, type PlanResult } from '@/lib/experience/catalog';
 import { ExperienceIcon } from './icon';
-import { clientReady,serverReady,draftSnapshot,serverDraftSnapshot,subscribeDraft,readDraft,updateDraft } from './draft-store';
+import { clearDraft,draftRevision,clientReady,serverReady,draftSnapshot,serverDraftSnapshot,subscribeDraft,readDraft,updateDraft } from './draft-store';
 
 type RecognitionResult = { isFinal: boolean; 0: { transcript: string } };
 type Recognition = { lang: string; continuous: boolean; interimResults: boolean; onresult: ((event: { resultIndex: number; results: ArrayLike<RecognitionResult> }) => void) | null; onerror: ((event: { error: string }) => void) | null; onend: (() => void) | null; start: () => void; stop: () => void; abort: () => void };
@@ -18,12 +21,12 @@ export function planText(basics: PlanBasics, result: PlanResult) {
   const expenses = result.budgetRows?.map(row => `${row.name} · ${row.category} · ${row.amount === null ? '' : row.amount.toLocaleString('ko-KR') + '원'}\n${row.basis}`).join('\n\n') || '';
   return `${result.title}\n\n사업 유형: ${basics.type === 'community' ? result.supportArea === 'activity' ? '마을공동체 활동' : result.supportArea === 'space' ? '마을공동체 공간조성' : '마을공동체' : '행복마을관리소'}\n${basics.type === 'happiness' ? '관리소명' : '모임명'}: ${basics.group || ''}\n주소: ${basics.address || ''}\n${basics.type === 'happiness' ? '담당자' : '대표자'}: ${basics.representative || ''}\n연락처: ${basics.phone || ''}\n${basics.type === 'happiness' ? '사업비' : '보조금'}: ${budget.grant?.toLocaleString('ko-KR') ?? ''}원\n${basics.type === 'happiness' ? '기타 재원' : '자부담'}: ${budget.contribution?.toLocaleString('ko-KR') ?? ''}원\n\n${Object.entries(planLabels(basics.type)).map(([key,label]) => `${label}\n${result.sections[key] || ''}`).join('\n\n')}${schedule ? '\n\n추진계획 표\n' + schedule : ''}${expenses ? '\n\n비목별 예산표\n' + expenses : ''}\n\n${basics.type === 'happiness' ? Object.entries(operationLabels).map(([key,label]) => label + '\n' + (result.operation?.[key as keyof typeof operationLabels] || '')).join('\n\n') + '\n\n' : ''}${result.history ? '주요 활동 이력\n' + result.history + '\n\n' : ''}초안입니다. 사실관계와 공모 조건을 확인해 주세요.`;
 }
-export function saveBlob(name: string, blob: Blob) { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 30000); }
+export { saveBlob } from '@/lib/experience/download';
 
 export function PlanWizard() {
   const rawDraft=useSyncExternalStore(subscribeDraft,draftSnapshot,serverDraftSnapshot);
   const ready=useSyncExternalStore(subscribeDraft,clientReady,serverReady);
-  const {basics,answers,step,result}=useMemo(()=>readDraft(rawDraft),[rawDraft]);
+  const {basics,answers,step,result,skipped=[]}=useMemo(()=>readDraft(rawDraft),[rawDraft]);
   const setBasics=(value:SetStateAction<PlanBasics>)=>updateDraft(current=>({...current,basics:typeof value==='function'?value(current.basics):value}));
   const setAnswers=(value:SetStateAction<string[]>)=>updateDraft(current=>({...current,answers:typeof value==='function'?value(current.answers):value}));
   const setStep=(value:number)=>updateDraft(current=>({...current,step:value}));
@@ -37,6 +40,7 @@ export function PlanWizard() {
   const [exporting,setExporting] = useState(false);
   const sharing = usePlanSharing(result ? {title:result.title,text:planText(basics,result)} : null, setMessage, setError);
   const recognition = useRef<Recognition|null>(null);
+  const generation = useRef<AbortController|null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const answerInput = useRef<HTMLTextAreaElement>(null);
   const interval = useRef<ReturnType<typeof setInterval>|null>(null);
@@ -44,7 +48,7 @@ export function PlanWizard() {
   const questionIndex = step - 1;
   const question = planQuestions[questionIndex];
 
-  useEffect(() => () => { recognition.current?.abort(); if (interval.current) clearInterval(interval.current); }, []);
+  useEffect(() => () => { if(recognition.current){recognition.current.onresult=null;recognition.current.onerror=null;recognition.current.onend=null;recognition.current.abort();}generation.current?.abort();if (interval.current) clearInterval(interval.current); }, []);
   const hasResult=result!==null;
   useEffect(() => { if (!ready) return; heading.current?.focus({preventScroll:true}); window.scrollTo({top:0,behavior:'instant'}); }, [ready,step,hasResult]);
 
@@ -70,27 +74,33 @@ export function PlanWizard() {
   async function generate() {
     if (!consent || running) return;
     stopVoice(); setRunning(true); setError(''); setMessage('');
-    try { const session = await fetch('/api/experience/session',{method:'POST'}); const sessionPayload = await session.json(); if (!session.ok) throw new Error(sessionPayload.error?.message || '체험을 시작하지 못했어요.'); const response = await fetch('/api/experience/business-plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({basics,answers})}); const payload = await response.json(); if (!response.ok || !payload.result) throw new Error(payload.error?.message || '계획서를 정리하지 못했어요.'); setResult(payload.result); } catch(cause) { setError(cause instanceof Error ? cause.message : '잠시 후 다시 시도해 주세요. 답변은 그대로 남아 있어요.'); } finally {setRunning(false);} }
+    const controller=new AbortController(), version=draftRevision();generation.current=controller;
+    try { const session = await fetch('/api/experience/session',{method:'POST',signal:controller.signal}); const sessionPayload = await session.json(); if (!session.ok) throw new Error(sessionPayload.error?.message || '체험을 시작하지 못했어요.'); const response = await fetch('/api/experience/business-plan',{method:'POST',signal:controller.signal,headers:{'content-type':'application/json'},body:JSON.stringify({basics,answers})}); const payload = await response.json(); if (!response.ok || !payload.result) throw new Error(payload.error?.message || '계획서를 정리하지 못했어요.'); if(!controller.signal.aborted&&version===draftRevision())setResult(payload.result); } catch(cause) { if(!controller.signal.aborted&&version===draftRevision())setError(cause instanceof Error ? cause.message : '잠시 후 다시 시도해 주세요. 답변은 그대로 남아 있어요.'); } finally {if(generation.current===controller){generation.current=null;setRunning(false);}} }
   async function downloadHwpx() { if(!result)return; setExporting(true); setError(''); try { const response=await fetch('/api/experience/export',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({basics,result})}); if(!response.ok) {const payload=await response.json();throw new Error(payload.error?.message || '한글 파일을 만들지 못했어요.');} saveBlob(planFilename(basics.type),await response.blob());setMessage('한글 파일을 내려받았어요. 제출 전 내용과 페이지 배치를 확인해 주세요.'); }catch(cause){setError(cause instanceof Error?cause.message:'다운로드에 실패했어요.');}finally{setExporting(false);} }
-  function reset() { if(!window.confirm('이 기기에 저장된 답변과 계획서 초안을 지울까요?'))return; stopVoice(); updateDraft(()=>({version:1,expires:0,basics:blankBasics,answers:Array(8).fill(''),result:null,step:0}));setConsent(false);setMessage('저장된 답변을 지웠어요.');setError(''); }
+  function stopForNewContent(){generation.current?.abort();generation.current=null;setRunning(false);if(recognition.current){recognition.current.onresult=null;recognition.current.onerror=null;recognition.current.onend=null;recognition.current.abort();recognition.current=null;}if(interval.current){clearInterval(interval.current);interval.current=null;}setListening(false);setConsent(false);sharing.closeManual();setError('');}
+  function reset() { stopForNewContent();clearDraft();setMessage('새 계획서를 시작합니다. 저장한 MD 파일은 언제든 다시 불러올 수 있어요.'); }
+  function restore(backup:PlanBackup){stopForNewContent();updateDraft(()=>({version:1,expires:0,basics:backup.basics,answers:backup.answers,result:backup.result,step:backup.result?9:backup.step,skipped:backup.skipped}));}
+  const files=<PlanFiles draft={{basics,answers,result,step,skipped}} onImport={restore} onNew={reset} setMessage={setMessage} setError={setError} busy={running||exporting||sharing.busy}/>;
   if(!ready) return <div className="exp-loading"><LoaderCircle className="exp-spin" /> 답변을 준비하고 있어요.</div>;
 
   if(result) return <>
     <div className="exp-results-banner"><Check size={25} /><div><h1 ref={heading} tabIndex={-1}>우리 마을의 계획이<br />한 걸음 구체적이 됐어요.</h1><p>AI가 정리한 초안입니다. 아래에서 바로 고칠 수 있어요.</p></div></div>
+    {files}
     <label className="exp-field">사업명<input value={result.title} maxLength={100} onChange={event=>setResult({...result,title:event.target.value})} /></label>
     <div className="exp-help">{basics.type==='happiness'?'관리소명':'모임명'}: {basics.group || '입력 필요'} · 총사업비: {budget.total?.toLocaleString('ko-KR') ?? '확인 필요'}원{basics.type==='community' && budget.ratio !== null ? ` · 자부담 ${budget.ratio}%` : ''}</div>
     {Object.entries(planLabels(basics.type)).map(([key,label])=><details className="exp-review-card" key={key} open><summary>{label}<ChevronDown size={17}/></summary><label className="exp-field"><span className="sr-only">{label} 수정</span><textarea value={result.sections[key]||''} maxLength={3000} onChange={event=>setResult({...result,sections:{...result.sections,[key]:event.target.value}})} /></label></details>)}
     <PlanDetails type={basics.type} result={result} onChange={setResult}/>
-    <div className="exp-result-buttons">{sharing.supported && <button className="exp-primary-button" disabled={sharing.busy} onClick={sharing.share}><Share2 size={17}/> 기기 공유 메뉴</button>}<button className={sharing.supported?'exp-secondary-button':'exp-primary-button'} disabled={sharing.busy} onClick={sharing.copy}><Copy size={17}/> 내용 복사</button><button className="exp-secondary-button" onClick={()=>saveBlob('사업계획서-초안.txt',new Blob([planText(basics,result)],{type:'text/plain;charset=utf-8'}))}><Download size={17}/> 글 파일 받기</button><button className="exp-secondary-button" disabled={exporting} onClick={downloadHwpx}>{exporting?<LoaderCircle className="exp-spin" size={17}/>:<Download size={17}/>} 한글 파일 받기</button></div>
+    <div className="exp-result-buttons">{sharing.supported && <button className="exp-primary-button" disabled={sharing.busy} onClick={sharing.share}><Share2 size={17}/> 기기 공유 메뉴</button>}<button className={sharing.supported?'exp-secondary-button':'exp-primary-button'} disabled={sharing.busy} onClick={sharing.copy}><Copy size={17}/> 내용 복사</button><button className="exp-secondary-button" disabled={exporting} onClick={downloadHwpx}>{exporting?<LoaderCircle className="exp-spin" size={17}/>:<Download size={17}/>} 한글 파일 받기</button></div>
     <p className="exp-help">{sharing.supported ? '‘기기 공유 메뉴’에서는 이 기기에 표시되는 앱을 선택합니다. 카카오톡이 표시되지 않으면 ‘내용 복사’ 후 카카오톡을 직접 열어 붙여넣어 주세요.' : '이 브라우저에서는 기기 공유 메뉴를 사용할 수 없어요. 카카오톡으로 보내려면 ‘내용 복사’를 누르고 카카오톡 대화창에 직접 붙여넣어 주세요.'}</p>
     <ManualPlanCopy text={sharing.manualText} onClose={sharing.closeManual}/>
     {basics.type==='happiness'&&<p className="exp-help">행복마을관리소 한글 파일은 가평군 마을공동체 통합지원센터의 사업 안내를 참고해 구성한 작성용 양식입니다.</p>}
-    <p className="exp-help">이 초안은 이 기기에 임시 저장됩니다. 공용 기기에서는 체험 후 ‘답변 지우기’를 눌러 주세요.</p>
+    <p className="exp-help">이 초안은 이 기기에 임시 저장됩니다. 다시 쓰려면 MD로 저장하세요. ‘새 계획서 시작’ 또는 ‘AI 도구 체험’을 누르면 현재 작성 내용이 지워집니다.</p>
     {message&&<p className="exp-help" role="status">{message}</p>}{error&&<p className="exp-error" role="alert">{error}</p>}
-    <div className="exp-footer-actions"><div className="exp-footer-inner"><button className="exp-secondary-button" onClick={()=>{setResult(null);go(9);}}><PencilLine size={17}/> 답변 수정</button><button className="exp-text-button" onClick={reset}><RotateCcw size={15} style={{display:'inline',marginRight:5}}/>답변 지우기</button></div></div>
+    <div className="exp-footer-actions"><div className="exp-footer-inner"><button className="exp-secondary-button" onClick={()=>{setResult(null);go(9);}}><PencilLine size={17}/> 답변 수정</button><button className="exp-text-button" disabled={sharing.busy} onClick={reset}><RotateCcw size={15} style={{display:'inline',marginRight:5}}/>새로 시작</button></div></div>
   </>;
 
   return <>
+    {files}
     <div className="exp-step-top"><strong>{step===0?'시작하기':step===9?'마지막 확인':`질문 ${step} / 8`}</strong><span>아는 만큼만 답해 주세요</span></div><div className="exp-progress" role="progressbar" aria-label="사업계획서 작성 진행" aria-valuemin={0} aria-valuemax={10} aria-valuenow={step+1}><span style={{width:`${(step+1)*10}%`}}/></div>
     {step===0 ? <>
       <h1 ref={heading} tabIndex={-1} className="exp-question-heading">우리 마을의 생각을<br />계획서로 만들어 볼까요?</h1><p className="exp-question-hint">어려운 문장 대신 편한 말로 답해 주세요.<br />모르는 내용은 나중에 채워도 괜찮아요.</p>
