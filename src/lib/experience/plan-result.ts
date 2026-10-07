@@ -1,17 +1,18 @@
 import { planSectionLabels, type PlanResult } from './catalog';
+import { cleanPlanText } from './plan-document';
 
 const record = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
-const text = (value: unknown, limit: number) => typeof value === 'string' ? value.slice(0, limit) : '';
+const text = (value: unknown, limit: number) => typeof value === 'string' ? cleanPlanText(value).slice(0, limit) : '';
 const list = (value: unknown, limit: number): unknown[] => Array.isArray(value) ? value.slice(0, limit) : [];
 
 export function normalizePlanResult(value: unknown): PlanResult | null {
   const data = record(value);
-  if (!text(data.title, 100).trim() || !data.sections || typeof data.sections !== 'object' || Array.isArray(data.sections)) return null;
+  if (typeof data.title !== 'string' || !data.sections || typeof data.sections !== 'object' || Array.isArray(data.sections)) return null;
   const sections = record(data.sections);
   return {
     title: text(data.title, 100),
-    sections: Object.fromEntries(Object.keys(planSectionLabels).map(key => [key, text(sections[key], 3000) || '[입력 필요]'])),
-    supportArea: data.supportArea === 'activity' ? 'activity' : 'space',
+    sections: Object.fromEntries(Object.keys(planSectionLabels).map(key => [key, text(sections[key], 3000)])),
+    supportArea: data.supportArea === 'activity' ? 'activity' : data.supportArea === 'space' ? 'space' : undefined,
     year: /^20\d{2}$/.test(text(data.year, 4)) ? text(data.year, 4) : '',
     activityField: text(data.activityField, 100), summary: text(data.summary, 1500),
     founded: text(data.founded, 50), members: text(data.members, 150), history: text(data.history, 1000),
