@@ -11,7 +11,7 @@ export function ExperienceShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const drawer = useRef<HTMLDialogElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
-  const wizard = pathname === '/experience/business-plan';
+  const wizard = pathname.startsWith('/experience/business-plan');
   const tools = pathname === '/experience' || pathname.includes('/tools/');
 
   useEffect(() => { drawer.current?.close(); }, [pathname]);

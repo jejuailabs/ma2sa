@@ -1,4 +1,6 @@
 'use client';
+import Link from 'next/link';
+import { PlanDetails } from './plan-details';
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type SetStateAction } from 'react';
 import { ArrowLeft, ArrowRight, Check, ChevronDown, Copy, Download, LoaderCircle, Mic, PencilLine, RotateCcw, Share2, ShieldCheck, Sparkles, Square } from 'lucide-react';
@@ -9,7 +11,12 @@ import { clientReady,serverReady,draftSnapshot,serverDraftSnapshot,subscribeDraf
 type RecognitionResult = { isFinal: boolean; 0: { transcript: string } };
 type Recognition = { lang: string; continuous: boolean; interimResults: boolean; onresult: ((event: { resultIndex: number; results: ArrayLike<RecognitionResult> }) => void) | null; onerror: ((event: { error: string }) => void) | null; onend: (() => void) | null; start: () => void; stop: () => void; abort: () => void };
 type SpeechWindow = Window & { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
-export function planText(basics: PlanBasics, result: PlanResult) { const budget = budgetSummary(basics); return `${result.title}\n\n사업 유형: ${basics.type === 'community' ? '마을공동체' : '행복마을관리소'}\n모임명: ${basics.group || '[입력 필요]'}\n주소: ${basics.address || '[입력 필요]'}\n대표자: ${basics.representative || '[입력 필요]'}\n연락처: ${basics.phone || '[입력 필요]'}\n보조금: ${budget.grant?.toLocaleString('ko-KR') ?? '[입력 필요]'}원\n자부담: ${budget.contribution?.toLocaleString('ko-KR') ?? '[입력 필요]'}원\n총사업비: ${budget.total?.toLocaleString('ko-KR') ?? '[입력 필요]'}원\n\n${Object.entries(planSectionLabels).map(([key,label]) => `${label}\n${result.sections[key] || '[입력 필요]'}`).join('\n\n')}\n\nAI가 정리한 초안입니다. 사실관계와 공모 조건을 확인해 주세요.`; }
+export function planText(basics: PlanBasics, result: PlanResult) {
+  const budget = budgetSummary(basics);
+  const schedule = result.scheduleRows?.map(row => `${row.name} | ${row.when}\n${row.content}`).join('\n\n') || '';
+  const expenses = result.budgetRows?.map(row => `${row.name} · ${row.category} · ${row.amount === null ? '[확인]' : row.amount.toLocaleString('ko-KR') + '원'}\n${row.basis}`).join('\n\n') || '';
+  return `${result.title}\n\n사업 유형: ${basics.type === 'community' ? result.supportArea === 'activity' ? '마을공동체 활동 샘플' : '마을공동체 공간조성' : '행복마을관리소'}\n모임명: ${basics.group || '[입력 필요]'}\n주소: ${basics.address || '[입력 필요]'}\n대표자: ${basics.representative || '[입력 필요]'}\n연락처: ${basics.phone || '[입력 필요]'}\n보조금: ${budget.grant?.toLocaleString('ko-KR') ?? '[입력 필요]'}원\n자부담: ${budget.contribution?.toLocaleString('ko-KR') ?? '[입력 필요]'}원\n\n${Object.entries(planSectionLabels).map(([key,label]) => `${label}\n${result.sections[key] || '[입력 필요]'}`).join('\n\n')}${schedule ? '\n\n추진계획 표\n' + schedule : ''}${expenses ? '\n\n비목별 예산표\n' + expenses : ''}\n\n${result.history ? '주요 활동 이력\n' + result.history + '\n\n' : ''}초안입니다. 사실관계와 공모 조건을 확인해 주세요.`;
+}
 export function saveBlob(name: string, blob: Blob) { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 30000); }
 
 export function PlanWizard() {
@@ -72,6 +79,7 @@ export function PlanWizard() {
     <label className="exp-field">사업명<input value={result.title} maxLength={100} onChange={event=>setResult({...result,title:event.target.value})} /></label>
     <div className="exp-help">모임명: {basics.group || '입력 필요'} · 총사업비: {budget.total?.toLocaleString('ko-KR') ?? '확인 필요'}원{budget.ratio !== null ? ` · 자부담 ${budget.ratio}%` : ''}{basics.type==='community' && budget.ratio!==null && budget.ratio<5 ? ' — 첨부 공간조성 양식의 자부담 5% 조건을 확인해 주세요.' : ''}</div>
     {Object.entries(planSectionLabels).map(([key,label])=><details className="exp-review-card" key={key} open><summary>{label}<ChevronDown size={17}/></summary><label className="exp-field"><span className="sr-only">{label} 수정</span><textarea value={result.sections[key]||''} maxLength={3000} onChange={event=>setResult({...result,sections:{...result.sections,[key]:event.target.value}})} /></label></details>)}
+    <PlanDetails result={result} onChange={setResult}/>
     <div className="exp-result-buttons"><button className="exp-primary-button" onClick={()=>share()}><Share2 size={17}/> 공유하기</button><button className="exp-secondary-button" onClick={()=>share(true)}><Copy size={17}/> 내용 복사</button><button className="exp-secondary-button" onClick={()=>saveBlob('사업계획서-초안.txt',new Blob([planText(basics,result)],{type:'text/plain;charset=utf-8'}))}><Download size={17}/> 글 파일 받기</button>{basics.type==='community' && <button className="exp-secondary-button" disabled={exporting} onClick={downloadHwpx}>{exporting?<LoaderCircle className="exp-spin" size={17}/>:<Download size={17}/>} 한글 파일 받기</button>}</div>
     {basics.type==='happiness'&&<p className="exp-help">행복마을관리소 초안은 복사와 글 파일로 받을 수 있어요. 해당 사업의 공식 한글 양식은 아직 연결되지 않았습니다.</p>}
     <p className="exp-help">이 초안은 이 기기에 임시 저장됩니다. 공용 기기에서는 체험 후 ‘답변 지우기’를 눌러 주세요. 공유 메뉴에서 카카오톡을 선택할 수 있는지는 기기 환경에 따라 다릅니다.</p>
@@ -83,6 +91,7 @@ export function PlanWizard() {
     <div className="exp-step-top"><strong>{step===0?'시작하기':step===9?'마지막 확인':`질문 ${step} / 8`}</strong><span>아는 만큼만 답해 주세요</span></div><div className="exp-progress" role="progressbar" aria-label="사업계획서 작성 진행" aria-valuemin={0} aria-valuemax={10} aria-valuenow={step+1}><span style={{width:`${(step+1)*10}%`}}/></div>
     {step===0 ? <>
       <h1 ref={heading} tabIndex={-1} className="exp-question-heading">우리 마을의 생각을<br />계획서로 만들어 볼까요?</h1><p className="exp-question-hint">어려운 문장 대신 편한 말로 답해 주세요.<br />모르는 내용은 나중에 채워도 괜찮아요.</p>
+      <Link href="/experience/business-plan/sample" className="exp-sample-entry"><Sparkles size={22}/><span><strong>새터 반찬 두레 샘플로 먼저 체험하기</strong><small>이야기 12칸부터 예산표·심사위원 모드까지</small></span><ArrowRight size={18}/></Link>
       <div className="exp-choice-grid">{([{type:'community',title:'마을공동체',hint:'공간을 가꾸고 주민 활동을 함께해요.',icon:'home'},{type:'happiness',title:'행복마을관리소',hint:'생활 불편을 해결하고 이웃을 돌봐요.',icon:'users'}] as const).map(item=><button className="exp-choice" aria-pressed={basics.type===item.type} key={item.type} onClick={()=>basic('type',item.type)}><ExperienceIcon name={item.icon}/><span><strong>{item.title}</strong><small>{item.hint}</small></span>{basics.type===item.type&&<Check className="exp-choice-check" size={19}/>}</button>)}</div>
       <div className="exp-input-group"><label className="exp-field">모임 이름 <small>선택 · 공간조성 양식은 15자 이내</small><input autoComplete="organization" maxLength={15} value={basics.group} onChange={event=>basic('group',event.target.value)} placeholder="예: 함께마을 주민모임" /></label><label className="exp-field">사업 이름 <small>선택 · 생각나는 이름이 있으면 적어 주세요</small><input maxLength={100} value={basics.title} onChange={event=>basic('title',event.target.value)} placeholder="예: 함께 쉬는 마을회관 만들기" /></label></div>
       <div className="exp-help"><ShieldCheck size={17} style={{display:'inline',marginRight:6}}/>음성 입력은 브라우저의 인식 서비스를 이용할 수 있어요. 주민등록번호 등 민감한 정보는 말하거나 입력하지 마세요.</div>

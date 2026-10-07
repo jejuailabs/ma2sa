@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>서식2 샘플 — 새터 반찬 두레</title>
+<style>
+  :root{
+    --ink:#1f2328; --muted:#5b6470; --line:#c9ced6; --paper:#fff; --bg:#f3f4f6;
+    --head:#e9eef5; --accent:#1f4e79; --soft:#fbfcfe;
+    --red:#d64545; --yellow:#e0a800; --green:#2e8b57; --mark:#fff3b0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    font-size:17px;line-height:1.65;word-break:keep-all}
+  .wrap{max-width:900px;margin:0 auto;padding:24px 16px 80px}
+  header.top{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:22px 24px;margin-bottom:18px}
+  header.top h1{margin:0 0 6px;font-size:28px;line-height:1.3}
+  header.top .meta{color:var(--muted);font-size:15px}
+  .notice{background:#fff8e1;border:1px solid #f1d98a;border-radius:10px;padding:12px 16px;margin-top:14px;font-size:16px}
+  nav.steps{position:sticky;top:0;z-index:5;display:flex;gap:6px;flex-wrap:wrap;background:var(--bg);padding:10px 0}
+  nav.steps a{flex:1 1 150px;text-align:center;text-decoration:none;color:var(--accent);background:var(--paper);
+    border:1px solid var(--line);border-radius:999px;padding:8px 10px;font-size:15px;font-weight:600}
+  section.step{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:22px 24px;margin:18px 0}
+  section.step h2{margin:0 0 4px;font-size:23px;color:var(--accent)}
+  section.step .sub{color:var(--muted);font-size:15px;margin-bottom:14px}
+  h3{font-size:20px;margin:26px 0 10px}
+  h4{font-size:18px;margin:20px 0 8px}
+  blockquote{margin:12px 0;padding:12px 16px;background:var(--soft);border-left:5px solid var(--accent);border-radius:6px}
+  blockquote b{color:var(--accent)}
+  table{width:100%;border-collapse:collapse;margin:10px 0 16px;font-size:16px}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top;text-align:left}
+  th{background:var(--head);font-weight:700}
+  .form table{border:2px solid #333}
+  .form th,.form td{border:1px solid #333}
+  .form th{background:#eef1f5;width:22%;text-align:center}
+  .form caption{caption-side:top;text-align:left;font-weight:800;font-size:20px;padding:0 0 8px;color:var(--ink)}
+  .form .blank{color:#8a93a0;font-style:italic}
+  .form .inner th{width:auto}
+  .form .num{text-align:right;white-space:nowrap}
+  .form .sum td{font-weight:800;background:#fafafa}
+  .para p{margin:0 0 12px}
+  .tag{display:inline-block;padding:2px 10px;border-radius:999px;font-size:14px;font-weight:700;background:var(--head);color:var(--accent);margin-right:6px}
+  .ok{color:var(--green);font-weight:700}
+  .partial{color:var(--yellow);font-weight:700}
+  .empty{color:var(--red);font-weight:700}
+  mark{background:var(--mark);padding:1px 5px;border-radius:4px;font-weight:700}
+  .dot{display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:-1px;margin-right:4px}
+  .dot.r{background:var(--red)} .dot.y{background:var(--yellow)} .dot.g{background:var(--green)}
+  .legend span{margin-right:14px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:10px 0}
+  .card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--soft)}
+  .card b{display:block;margin-bottom:4px}
+  .memo{background:#eef6ff;border:1px solid #bcd4f0;border-radius:10px;padding:12px 16px;margin-top:14px}
+  .kv{display:grid;grid-template-columns:1fr;gap:6px}
+  ul,ol{padding-left:22px}
+  li{margin:4px 0}
+  .small{font-size:14px;color:var(--muted)}
+  .toolbar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:10px}
+  .toolbar button{font:inherit;font-size:15px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--paper);cursor:pointer}
+  @media (max-width:600px){ body{font-size:16px} table{font-size:15px} .form th{width:30%} }
+  @media print{
+    body{background:#fff;font-size:12.5pt}
+    .wrap{max-width:none;padding:0}
+    nav.steps,.toolbar{display:none}
+    section.step,header.top{border:none;border-radius:0;padding:0;margin:0 0 14pt;break-inside:auto}
+    section.step{page-break-before:always}
+    section.step:first-of-type{page-break-before:auto}
+    table{font-size:11.5pt}
+    .form table{page-break-inside:auto}
+    tr{page-break-inside:avoid}
+    @page{size:A4;margin:16mm 14mm}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>서식2 샘플 1부 — 「새터 반찬 두레」</h1>
+  <div class="meta">가평공동체 강의 · 2026-10-07 · 웹앱기획 15-6절 샘플 · <b>가상 팀</b>(북면 새터마을 — 마을·사람·숫자는 지어낸 것. 읍면 숫자와 단가만 2026 안내서·세트 파일 값)</div>
+  <div class="notice">
+    <b>리사 님이 볼 것 세 가지</b> — ㉠ ④ 초안의 글이 "마을 사람이 쓴 글"로 읽히나 · ㉡ 길이가 서식 칸에 맞나(길면 어디를 줄일까) · ㉢ ⑤ 심사위원 모드의 말투가 어르신 앞에서 쓸 만한가
+  </div>
+  <p class="small" style="margin:12px 0 0">팀 설정: 2023년 경로당 체조 모임에서 시작한 12명. 2026년 1단계(200만 원)를 했고 2027년 <b>2단계(300만 원 한도)</b>를 준비한다. 2027년 공고 기준으로 썼고 금액·단가는 2026 안내서 것(2027 공고에서 확인).</p>
+</header>
+
+<nav class="steps">
+  <a href="#s1">① 쏟아내기</a><a href="#s2">② 뼈대 12칸</a><a href="#s3">③ 되묻기</a><a href="#s4">④ 초안(서식2)</a><a href="#s5">⑤ 심사위원 모드</a><a href="#s6">점검·배운 것</a>
+</nav>
+<div class="toolbar"><button onclick="window.print()">인쇄 / PDF 저장</button></div>
+
+<!-- ① -->
+<section class="step" id="s1">
+  <h2>① 쏟아내기 — 팀이 말한 그대로</h2>
+  <div class="sub">한 화면, 마이크 단추 하나. 말머리 세 줄("우리 마을은 요즘…", "하고 싶은 일은…", "걱정은…")만 보인다. 아래는 받아 적은 글.</div>
+  <blockquote><b>회장(여, 68)</b> — 우리는 새터마을 경로당에서 2023년 봄에 체조하면서 모인 사람들이에요. 지금 열두 명. 올해 1단계로 200만 원 받아서 어르신 생신잔치하고 체조교실 했어요. 근데 하다 보니까 점심때 되면 다들 집에 가. 혼자 밥 드시는 분이 많아요. 우리 마을에 일흔 넘은 어르신이 스무 분 넘는데 혼자 사시는 분이 절반쯤 돼. 그래서 반찬을 같이 만들어서 같이 먹자, 그 얘기가 나왔어요. 둘째 넷째 수요일에 마을회관에서. 못 나오시는 분은 가져다 드리고. 재료는 한 분에 사천 원쯤이면 돼요. 요리 선생님은 면에 계신 분을 모시면 되고. 끝나면 우리 마을 반찬 요리책 하나 만들고 싶어요. 내년에는 어르신들이 반찬 선생님을 하시고, 재료는 마을 텃밭하고 회비로 하면 되지 않을까.</blockquote>
+  <blockquote><b>총무(남, 61)</b> — 회비는 달에 만 원씩 걷고 있어요. 회원 밥값은 회비로 하면 되죠. 4월부터 10월까지 하면 열네 번이에요. 선생님은 한 달에 한 번, 두 시간씩.</blockquote>
+  <blockquote><b>회원(여, 72)</b> — 나는 어르신들 다 알아. 누가 뭘 못 드시는지, 당뇨 있는 분, 이 안 좋은 분. 그런 거 내가 챙길게.</blockquote>
+  <h4>돌아가며 한마디 (역할)</h4>
+  <div class="cards">
+    <div class="card"><b>장보기 2명</b>총무·○○</div>
+    <div class="card"><b>요리 3명</b>회장·○○·○○</div>
+    <div class="card"><b>집으로 전하기 2명</b>○○·○○ (어르신과 짝)</div>
+    <div class="card"><b>사진·기록 1명</b>○○</div>
+    <div class="card"><b>회계·영수증</b>총무</div>
+    <div class="card"><b>연락·단톡방 1명</b>○○</div>
+    <div class="card"><b>어르신 식단 챙기기</b>○○(72)</div>
+    <div class="card"><b>나머지 2명</b>"시키는 거 다 할게"</div>
+  </div>
+</section>
+
+<!-- ② -->
+<section class="step" id="s2">
+  <h2>② 뼈대 12칸 — AI 가 말을 나눠 담은 것</h2>
+  <div class="sub">서식이 아니라 "우리 이야기 지도". <span class="ok">✓ 찼음</span> · <span class="partial">△ 일부</span> · <span class="empty">○ 비었음</span></div>
+  <table>
+    <tr><th style="width:5%">#</th><th style="width:22%">칸</th><th>담긴 것</th><th style="width:16%">상태</th></tr>
+    <tr><td>1</td><td>우리 모임</td><td>2023년 봄 경로당 체조 모임, 12명, 2026년 1단계 200만 원(생신잔치·체조교실), 회비 월 1만 원</td><td class="ok">✓ (남·여 수는 안 말함)</td></tr>
+    <tr><td>2</td><td>마을 현실·불편</td><td>점심때면 다들 집으로, 혼자 드시는 어르신 많음. 70세 넘는 어르신 20여 분, 절반이 혼자</td><td class="ok">✓</td></tr>
+    <tr><td>3</td><td>좋아지는 사람</td><td>직접: 어르신 20분 / 함께: 회원 12명</td><td class="ok">✓</td></tr>
+    <tr><td>4</td><td>할 일</td><td>반찬 함께 만들어 한 상에서 함께 먹기, 못 나오시는 분께 전하기, 요리책</td><td class="ok">✓</td></tr>
+    <tr><td>5</td><td>어디서·허락</td><td>마을회관 — 허락 여부 말 안 함</td><td class="empty">○</td></tr>
+    <tr><td>6</td><td>언제·몇 번</td><td>4~10월 둘째·넷째 수요일 14회, 선생님 월 1회 2시간 7회</td><td class="ok">✓</td></tr>
+    <tr><td>7</td><td>역할 분담</td><td>장보기 2·요리 3·전하기 2·기록 1·회계 1·연락 1·식단 1</td><td class="ok">✓</td></tr>
+    <tr><td>8</td><td>다른 사람·조직과 함께</td><td>말 안 함</td><td class="empty">○</td></tr>
+    <tr><td>9</td><td>정하는 방법</td><td>말 안 함</td><td class="empty">○</td></tr>
+    <tr><td>10</td><td>필요한 것</td><td>재료 4천 원/인, 면 요리 선생님, (요리책)</td><td class="partial">△ → ④에서 AI 제안</td></tr>
+    <tr><td>11</td><td>달라지는 것·재는 법</td><td>"혼자 드시던 분이 모여 드신다"는 있으나 무엇으로 알지는 없음</td><td class="partial">△</td></tr>
+    <tr><td>12</td><td>내년·그 뒤</td><td>어르신이 반찬 선생님, 재료는 텃밭·회비</td><td class="ok">✓</td></tr>
+  </table>
+</section>
+
+<!-- ③ -->
+<section class="step" id="s3">
+  <h2>③ 되묻기 — 빈 칸 4개만</h2>
+  <div class="sub">한 번에 하나, 보기 예 포함. 돈(10번)은 묻지 않는다.</div>
+  <table>
+    <tr><th style="width:48%">되물은 말</th><th>팀 답</th></tr>
+    <tr><td><b>5번</b> 마을회관을 써도 된다고 <b>누구에게</b> 허락받았나요? <span class="small">(예: 이장님·마을회 회의)</span></td><td>"이장님이 우리 회원이라 쓰라고 했는데, 마을회 회의에서 정식으로 정한 건 아니에요." → <mark>[확인: 마을회 사용 승낙]</mark> 숙제</td></tr>
+    <tr><td><b>8번</b> 우리 모임 말고 <b>함께해 주는 곳</b>이 있나요? <span class="small">(예: 청년회·부녀회·보건지소)</span></td><td>"청년회가 전하러 갈 때 차를 내주기로 했고, 면 보건지소에서 어르신 영양 얘기 한 번 와 준다고 했어요."</td></tr>
+    <tr><td><b>9번</b> 차림표나 할 일은 <b>어떻게 정하나요</b>? <span class="small">(예: 달마다 모여서·단톡방)</span></td><td>"매달 첫 수요일 체조 끝나고 회의해요. 급한 건 단톡방. 차림표는 어르신들한테 먼저 물어보고 정하자고 했어요."</td></tr>
+    <tr><td><b>11번</b> 끝났을 때 달라진 걸 <b>무엇으로 알 수 있을까요</b>? <span class="small">(예: 오신 분 수·사진·물어보기)</span></td><td>"오시는 분 수 세고, 사진 찍고, 서명 받고. 끝날 때 어르신들한테 종이로 물어볼게요."</td></tr>
+  </table>
+  <div class="memo"><b>돈은 이렇게:</b> AI 가 단가표로 예산표를 먼저 만들어 "맞나요?"만 물었다 → 팀: "맞아요. 천막 값은 알아봐야 해요."</div>
+</section>
+
+<!-- ④ -->
+<section class="step" id="s4">
+  <h2>④ 초안 — 서식2</h2>
+  <div class="sub">초안 · 2026년 안내서 기준, 2027년 공고에서 확인. 노란 <mark>[확인]</mark>은 팀이 말하지 않아 비워 둔 것(내보내기 전에 채운다).</div>
+
+  <h4>사업명 후보 3개 <span class="small">(팀이 1번을 골랐다)</span></h4>
+  <ol>
+    <li><b>혼자 말고 같이 — 새터 반찬 두레 밥상</b></li>
+    <li>둘째·넷째 수요일, 새터 한 상</li>
+    <li>어르신이 선생님 되는 새터 반찬 두레</li>
+  </ol>
+  <p><span class="tag">활동분야(자동 분류 → 팀 확인)</span> ☑ 복지/돌봄/나눔 &nbsp; <span class="tag">사업 유형</span> 2 마을의 필요를 해결하는 공동체 사업 (+ 3 사라지는 마을 자원 전수)</p>
+
+  <div class="form">
+  <h3>1. 가평군 마을공동체 주민제안 공모사업 신청서</h3>
+  <table>
+    <tr><th>지원분야</th><td colspan="3">공동체 활동</td></tr>
+    <tr><th>모임명<br><span class="small">(15자 이내)</span></th><td>새터 반찬 두레</td><th style="width:14%">대표자</th><td class="blank">(비움)</td></tr>
+    <tr><th>모임소재지 주소</th><td class="blank">(비움 — 도로명 주소)</td><th>연락처</th><td class="blank">(비움)</td></tr>
+    <tr><th>활동분야</th><td colspan="3">☑ 복지/돌봄/나눔 &nbsp; ☐ 문화예술/관광/체육 &nbsp; ☐ 기후/환경/생태 &nbsp; ☐ 교육/학술연구 &nbsp; ☐ 자원봉사/기부 &nbsp; ☐ 권리보호 &nbsp; ☐ 안전 &nbsp; ☐ 보건/의료/건강 &nbsp; ☐ 경제활동 &nbsp; ☐ 기타</td></tr>
+    <tr><th>사업명</th><td colspan="3">혼자 말고 같이 — 새터 반찬 두레 밥상</td></tr>
+    <tr><th>사업 내용</th><td colspan="3" class="para">
+      <p><b>(목적)</b> 새터마을에서 점심을 혼자 드시는 70세 이상 어르신들이 한 달에 두 번은 이웃과 한 상에서 드시게 하고, 어르신이 가진 반찬 솜씨를 마을이 함께 배운다.</p>
+      <p><b>(대상)</b> 70세 이상 어르신 20분(이 가운데 혼자 사시는 분 약 10분)과 새터 반찬 두레 회원 12명.</p>
+      <p><b>(장소)</b> 새터마을 마을회관 조리실·큰방.</p>
+      <p><b>(프로그램)</b> 4월부터 10월까지 둘째·넷째 수요일 14회, 어르신과 회원이 함께 반찬 두 가지를 만들어 함께 점심을 먹는다. 매달 한 번은 면의 주민 요리 강사와 함께 어르신이 아는 옛 반찬 한 가지를 되살린다. 못 나오시는 어르신 댁에는 어르신·회원이 짝을 지어 반찬을 들고 가 안부를 묻는다. 10월에는 마을 전체를 초대하는 "새터 한 상" 잔치를 열고 어르신이 반찬 선생님으로 시연한다.</p>
+      <p style="margin:0"><b>(기대효과)</b> 혼자 드시던 어르신 20분이 한 달에 두 번 모여 드시고, 반찬 14가지가 사진과 조리법으로 남는다. 2028년에는 어르신이 강사가 되고 재료는 마을 텃밭과 회비로 이어 간다.</p>
+    </td></tr>
+    <tr><th>사업예산</th><td colspan="3"><b>2,322</b> 천원</td></tr>
+    <tr><td colspan="4" class="blank">▢ 개인정보 수집·이용에 동의합니다. &nbsp;·&nbsp; 2027년 &nbsp;월 &nbsp;일 &nbsp;·&nbsp; 대표제안자: (서명/날인) — 종이에서</td></tr>
+  </table>
+
+  <h3>2. 사업계획서</h3>
+  <table>
+    <tr><th>지원분야</th><td colspan="3">공동체 활동</td></tr>
+    <tr><th>모임명</th><td>새터 반찬 두레</td><th style="width:14%">사업명</th><td>혼자 말고 같이 — 새터 반찬 두레 밥상</td></tr>
+    <tr><th>사업기간</th><td colspan="3">2027. 보조금 교부일 ~ 2027. 10. 31. <span class="small">※ 10월 말까지 완료</span></td></tr>
+    <tr><th>사업예산</th><td>보조금 <b>2,322</b> 천원</td><th>비 고</th><td>2단계(1단계 2026년 수행) · 회원 식재료와 요리책 인쇄는 회비로</td></tr>
+    <tr><th colspan="4" style="text-align:left">사업의 목적 및 필요성</th></tr>
+    <tr><td colspan="4" class="para">
+      <p>북면은 주민 100명 가운데 46명이 65세 이상이고(45.7%, 2025 인구총조사), 2020년부터 2024년 사이 인구가 8.7% 줄었다. 새터마을도 70세가 넘은 어르신이 스무 분 남짓인데 그 절반은 혼자 산다. 2025 가평군 사회조사에서 노인이 느끼는 가장 큰 문제 세 번째가 외로움·소외감(21.8%)이었고, 원하는 돌봄에서 식사지원(22.2%)이 건강·가사지원과 비슷하게 높았다.</p>
+      <p>우리가 본 장면은 더 단순하다. 경로당 체조가 끝나고 점심때가 되면 모두 집으로 흩어진다. 혼자 사는 분은 김치 한 가지로 끼니를 때우거나 거른다. 올해 1단계 사업으로 생신잔치와 체조교실을 하면서 "밥을 같이 먹는 날이 있으면 좋겠다"는 말을 어르신들께 여러 번 들었다.</p>
+      <p>새터 반찬 두레는 2023년 봄 경로당 체조 모임에서 시작해 지금 12명이 매주 모인다. 올해 1단계를 하며 장보기·요리·기록 역할이 생겼고 회비(월 1만 원)도 모으고 있다. 어르신 스무 분을 한 분 한 분 아는 회원이 있어 못 드시는 음식과 건강 상태를 챙길 수 있다.</p>
+      <p style="margin:0">이 일은 반찬을 "드리는" 일이 아니라 "함께 만드는" 일이다. 어르신이 아는 옛 반찬을 되살려 마을이 배우고, 못 나오시는 분께는 어르신과 회원이 짝이 되어 찾아간다. 혼자 먹던 밥상이 마을 밥상이 되면, 어르신은 받는 사람이 아니라 가르치는 사람이 되고 모임은 어르신과 함께 커진다.</p>
+    </td></tr>
+    <tr><th colspan="4" style="text-align:left">추진계획</th></tr>
+    <tr><td colspan="4" style="padding:0">
+      <table class="inner" style="margin:0;border:none">
+        <tr><th style="width:22%">사업명</th><th style="width:24%">일정</th><th>사업내용</th></tr>
+        <tr><td>준비하기</td><td>4월(교부 뒤 첫째·둘째 주) 2회</td><td>마을회관. 회원 12명 준비 모임: 역할 확정, 7개월 차림표, 어르신 20가구 찾아가 드시고 싶은 반찬·못 드시는 것 묻기, 마을회 사용 승낙 받기</td></tr>
+        <tr><td>함께 만들어 함께 먹기</td><td>4~10월 둘째·넷째 수요일 14회</td><td>마을회관 조리실·큰방, 11시~13시. 어르신 20분·회원 12명. 장보기조 2명, 요리조 3명이 어르신과 반찬 2가지를 만들어 한 상에서 점심</td></tr>
+        <tr><td>요리 선생님과 옛 반찬 되살리기</td><td>4~10월 매달 둘째 수요일 7회</td><td>면 주민 요리 강사 2시간. 어르신이 아는 옛 반찬 1가지 + 강사 반찬 1가지. 조리법은 기록조가 사진·글로 남김</td></tr>
+        <tr><td>집으로 전하기</td><td>14회(만드는 날마다)</td><td>못 나오시는 어르신 5~6분 댁. 어르신·회원 짝 2명이 반찬을 들고 가 안부. 청년회가 차량 협조</td></tr>
+        <tr><td>마을에 알리기</td><td>4월·10월</td><td>현수막 2개(마을회관·버스정류장). 단톡방·마을 방송으로 날짜 안내</td></tr>
+        <tr><td>새터 한 상 잔치</td><td>10월 넷째 수요일 1회</td><td>마을 전체 초대. 천막·식탁 빌림. 어르신 반찬 선생님 시연, 반찬 14가지 사진 전시, 면 보건지소 영양 이야기</td></tr>
+        <tr><td>돌아보기</td><td>10월 마지막 주 2회</td><td>어르신 20분께 종이로 묻기(좋았던 것·내년 바라는 것), 사진·서명부·조리법 정리, 2028년 계획(어르신 강사·텃밭), 정산 준비</td></tr>
+      </table>
+    </td></tr>
+  </table>
+
+  <h3>비목별 예산계획 〈보조금〉 <span class="small">(단위: 천원)</span></h3>
+  <table>
+    <tr><th style="width:20%">구분</th><th style="width:14%">비목</th><th style="width:11%">금액</th><th>세부내역 및 산출기초</th></tr>
+    <tr class="sum"><td colspan="2" style="text-align:center">합 계</td><td class="num">2,322</td><td></td></tr>
+    <tr><td>함께 만들어 함께 먹기</td><td>소모품비</td><td class="num">1,120</td><td>반찬 재료 4,000원 × 어르신 20명 × 14회 = 1,120,000원 <span class="small">(회원 12명 몫 재료는 회비로)</span></td></tr>
+    <tr><td>옛 반찬 되살리기</td><td>강사료</td><td class="num">700</td><td>주민강사(일반 3급) 2시간 100,000원(첫 1시간 60,000 + 다음 1시간 40,000) × 7회 = 700,000원</td></tr>
+    <tr><td>마을에 알리기</td><td>홍보비</td><td class="num">160</td><td>현수막 80,000원 × 2개 = 160,000원</td></tr>
+    <tr><td>새터 한 상 잔치</td><td>임차료</td><td class="num">150</td><td>천막·식탁·의자 빌림 150,000원 × 1회 = 150,000원 <mark>[확인: 견적]</mark></td></tr>
+    <tr><td>준비하기·돌아보기</td><td>식사다과비</td><td class="num">192</td><td>회의 다과 4,000원 × 회원 12명 × 4회 = 192,000원</td></tr>
+  </table>
+  <p class="small">※ "1식" 등 포괄적 산출내역 불가 — 모든 줄이 단가 × 인원 × 횟수.</p>
+  </div>
+
+  <h4>(덧칸 — 서식에 없음, 부록용) 비율과 한도 확인</h4>
+  <table>
+    <tr><th>비목</th><th>금액</th><th>비율</th><th>한도</th><th>확인</th></tr>
+    <tr><td>소모품비</td><td>1,120</td><td>48.2%</td><td>50% 이내</td><td class="ok">✓ <span class="small">(가까움 — 재료 단가를 올리면 넘는다)</span></td></tr>
+    <tr><td>강사료</td><td>700</td><td>30.1%</td><td>1·2단계 50% 이내 · 3급 하루 10만 원</td><td class="ok">✓</td></tr>
+    <tr><td>임차료</td><td>150</td><td>6.5%</td><td>30% 이내</td><td class="ok">✓</td></tr>
+    <tr><td>식사다과비</td><td>192</td><td>8.3%</td><td>10% 이내 · 다과 4천 원 · 회원만</td><td class="ok">✓</td></tr>
+    <tr><td>홍보비</td><td>160</td><td>—</td><td>현수막 개당 8만 원</td><td class="ok">✓</td></tr>
+    <tr><td><b>합계</b></td><td><b>2,322</b></td><td></td><td>2단계 3,000 이내</td><td class="ok">✓</td></tr>
+    <tr><td>모임 돈으로</td><td>—</td><td></td><td colspan="2">회원 재료 몫 · 요리책 인쇄 · 이행보증보험료 <span class="small">(안내서: 인쇄비·수수료는 자체 경비)</span></td></tr>
+  </table>
+
+  <div class="form">
+  <h3>3. 모임소개서</h3>
+  <table>
+    <tr><th>모임명</th><td>새터 반찬 두레</td><th style="width:16%">모임 구성연도</th><td>2023년</td></tr>
+    <tr><th>대표자명 / 실무자명</th><td class="blank">(비움)</td><th>휴대폰 / 이메일</th><td class="blank">(비움)</td></tr>
+    <tr><th>모임소재지 주소</th><td class="blank">(비움 — 도로명 주소)</td><th>홈페이지</th><td class="blank">(비움)</td></tr>
+    <tr><th>구성원 수</th><td colspan="3">총 12명 (남 <mark>[확인]</mark>명, 여 <mark>[확인]</mark>명)</td></tr>
+    <tr><th>모임 소개</th><td colspan="3" class="para">
+      <p><b>(계기)</b> 2023년 봄 새터마을 경로당에서 체조를 같이 하던 이웃들이 "운동만 하지 말고 마을 일도 하자"며 모였다.</p>
+      <p><b>(구성)</b> 60대와 70대 12명. 장보기·요리·기록·회계·연락 역할이 나뉘어 있고, 매달 첫 수요일 체조 뒤에 회의한다.</p>
+      <p><b>(특징)</b> 어르신 스무 분을 한 분 한 분 아는 회원이 있어 못 드시는 음식과 건강을 챙길 수 있다. 회비 월 1만 원을 모은다.</p>
+      <p><b>(문제점)</b> 올해 1단계 사업은 잔치와 교실 중심이라 끝나면 다시 흩어졌다. 매번 모이는 "밥상"이 없었다.</p>
+      <p style="margin:0"><b>(목표)</b> 어르신이 받는 사람이 아니라 가르치는 사람이 되는 마을 밥상을 만들고, 2028년에는 어르신 강사·마을 텃밭·회비로 지원금 없이도 이어 간다.</p>
+    </td></tr>
+    <tr><th>모임 주요 활동 이력<br><span class="small">(5줄 이내)</span></th><td colspan="3">
+      2023~ 매주 경로당 체조 모임(12명)<br>
+      2026 가평군 1단계: 어르신 생신잔치 4회, 체조교실 <mark>[확인: 횟수]</mark><br>
+      2026 어르신 가정 방문 안부(수시)<br>
+      2024~ 회비 운영(월 1만 원)
+    </td></tr>
+    <tr><th>이전 사업비 운영 내역</th><td colspan="3" style="padding:0">
+      <table class="inner" style="margin:0;border:none">
+        <tr><th>지원기관</th><th>지원분야</th><th>사업년도</th><th>지원액</th><th>사업명</th></tr>
+        <tr><td>가평군</td><td>2026년 가평군 주민제안 공모사업 '공동체활동' 1단계</td><td>2026</td><td>2백만원</td><td><mark>[확인: 사업명]</mark></td></tr>
+      </table>
+    </td></tr>
+  </table>
+
+  <h3>4. 모임구성원 서명부 — 앱이 만들지 않음</h3>
+  <p>종이에 각자 자필로. 안내 세 줄만: 상세 주소(동·호수)까지 · 가족만으로 구성 불가 · 개인정보 동의 체크.</p>
+  </div>
+</section>
+
+<!-- ⑤ -->
+<section class="step" id="s5">
+  <h2>⑤ 심사위원 모드 — 붙임1 20항목</h2>
+  <div class="sub legend"><span><i class="dot r"></i>요건에 걸림</span><span><i class="dot y"></i>고치면 좋음</span><span><i class="dot g"></i>잘됨</span></div>
+  <table>
+    <tr><th style="width:24%">항목</th><th style="width:6%">색</th><th style="width:28%">심사위원이 물을 말</th><th>초안의 근거 또는 고칠 것</th></tr>
+    <tr><td>A1 공동체 활성화·소통 공간</td><td><i class="dot g"></i></td><td>"모임이 커지는 일인가, 행사인가?"</td><td>격주 밥상 + 회의 + 어르신 참여 — 모임이 매번 모인다</td></tr>
+    <tr><td>A2 공간 규모·용도·접근성</td><td><i class="dot y"></i></td><td>"마을회관을 쓸 수 있다는 것을 무엇으로 보여 주나?"</td><td><mark>[확인: 마을회 사용 승낙]</mark> — 준비하기 줄에 넣었으나 <b>신청 전에 받아 두는 것</b>이 안전. 숙제 1</td></tr>
+    <tr><td>A3 마을 현실 ↔ 목적</td><td><i class="dot g"></i></td><td>"왜 이 마을에 이 일인가?"</td><td>북면 65세 이상 45.7%·인구 −8.7% + 우리가 본 장면</td></tr>
+    <tr><td>A4 구체적 실행 방안·파급</td><td><i class="dot g"></i></td><td>"몇 번, 누가, 어디서?"</td><td>14회·7회·역할 7가지·장소</td></tr>
+    <tr><td>A5 수혜적 복지·일반강좌 지양</td><td><i class="dot y"></i></td><td>"이거 반찬 배달 봉사 아닌가요?"</td><td>"함께 만들어 함께 먹기"가 중심이고 전하기는 어르신과 짝 — 문장을 신청서 첫 줄에도 넣어 두었다. 강사 7회는 "어르신 옛 반찬 되살리기"로 어르신이 주체</td></tr>
+    <tr><td>B1 열의·역할 구체성</td><td><i class="dot g"></i></td><td>"누가 무엇을 맡나?"</td><td>돌아가며 한마디 → 7역할</td></tr>
+    <tr><td>B2 주민 참여로 실행방안</td><td><i class="dot g"></i></td><td>"어르신 의견은 어떻게 들었나?"</td><td>준비하기: 20가구 방문해 묻기</td></tr>
+    <tr><td>B3 관내 모임과 연대</td><td><i class="dot y"></i></td><td>"다른 모임과 뭘 같이 하나?"</td><td>청년회 차량 · 보건지소 영양 이야기 — <b>약속한 사실인지 확인</b>해 이름을 쓸 수 있으면 더 좋다</td></tr>
+    <tr><td>B4 합의 방안</td><td><i class="dot g"></i></td><td>"방향은 어떻게 정하나?"</td><td>매달 첫 수요일 회의</td></tr>
+    <tr><td>B5 규칙·의견 수렴</td><td><i class="dot y"></i></td><td>"회칙이나 정한 규칙이 있나?"</td><td>회의·단톡방·회비는 있으나 <b>글로 된 규칙이 없다</b> → "회칙은 2027년 봄 회의에서 정한다" 한 줄 또는 숙제 2</td></tr>
+    <tr><td>B6 대표 주도 지양</td><td><i class="dot g"></i></td><td>"회장 혼자 하는 것 아닌가?"</td><td>역할 7가지, 회계는 총무</td></tr>
+    <tr><td>C1 주민 호응·확대</td><td><i class="dot g"></i></td><td>"어르신들이 원하나?"</td><td>1단계 때 "밥 같이 먹는 날" 요청 들음</td></tr>
+    <tr><td>C2 장기 계획</td><td><i class="dot g"></i></td><td>"내년 그다음은?"</td><td>2028년 어르신 강사·텃밭·회비</td></tr>
+    <tr><td>C3 이력으로 본 자립</td><td><i class="dot y"></i></td><td>"1단계는 잘 끝났나?"</td><td>2·3단계는 올해 의무 이행(역량교육 2회·중간 점검·정산)을 본다 → 이력 줄에 "2026 역량교육 2회 수료·정산 완료"를 넣을 수 있으면 넣기 <mark>[확인]</mark></td></tr>
+    <tr><td>C4 예산 효율·재정 자립</td><td><i class="dot g"></i></td><td>"돈을 아껴 쓰나?"</td><td>회원 재료 몫·인쇄는 회비, 소모품 48.2%</td></tr>
+    <tr><td>C5 흐지부지 지양</td><td><i class="dot g"></i></td><td>"끝나면 뭐가 남나?"</td><td>조리법 14가지·사진·서명부·돌아보기 2회</td></tr>
+    <tr><td>D1 필요성·구체성</td><td><i class="dot g"></i></td><td>"마을이 정말 필요로 하나?"</td><td>혼자 사는 어르신 10분·사회조사 식사지원 수요</td></tr>
+    <tr><td>D2 직접·간접 수혜 조화</td><td><i class="dot g"></i></td><td>"누가 좋아지나?"</td><td>직접 어르신 20분 / 함께 회원 12명 / 마을 전체(잔치)</td></tr>
+    <tr><td>D3 사회적 가치·공익</td><td><i class="dot g"></i></td><td>"마을에 무엇을 남기나?"</td><td>옛 반찬 되살림 + 혼자 드시는 분 줄이기</td></tr>
+    <tr><td>D4 친목 지양</td><td><i class="dot g"></i></td><td>"회원들끼리 먹는 것 아닌가?"</td><td>다과비는 회원 회의만, 밥상 재료는 어르신 몫만 보조금</td></tr>
+  </table>
+
+  <h4>고치면 좋음 4개 → 숙제 카드</h4>
+  <div class="cards">
+    <div class="card"><b>숙제 1</b>마을회 회의에서 마을회관 사용 승낙(글로) — 신청 전</div>
+    <div class="card"><b>숙제 2</b>회칙 한 장(모이는 날·회비·역할·정하는 법) — 2027년 봄 첫 회의</div>
+    <div class="card"><b>숙제 3</b>청년회·보건지소 협조를 글(문자라도)로 받아 두기</div>
+    <div class="card"><b>숙제 4</b>2026 역량교육 수료·정산 완료 기록 챙기기</div>
+  </div>
+  <div class="memo"><b>퍼실 메모:</b> 요리책을 보조금으로 인쇄하려던 생각은 안내서(인쇄비는 자체 경비)에 걸린다. 사진·조리법은 보조금 밖에서 모아 두고 인쇄는 회비로 — 초안에 그렇게 반영했다.</div>
+</section>
+
+<!-- 점검·배운 것 -->
+<section class="step" id="s6">
+  <h2>코드가 잡는 요건 점검</h2>
+  <div class="sub">사람 대신 돌린 것. 앱에서는 입력 즉시 빨간 글씨로 뜬다.</div>
+  <table>
+    <tr><th style="width:40%">요건</th><th>값</th><th style="width:16%">결과</th></tr>
+    <tr><td>단계·인원</td><td>2단계, 12명(10명 이상)</td><td class="ok">✓</td></tr>
+    <tr><td>같은 단계 재신청</td><td>2026 1단계 → 2027 2단계</td><td class="ok">✓</td></tr>
+    <tr><td>금액 한도</td><td>2,322 ≤ 3,000</td><td class="ok">✓</td></tr>
+    <tr><td>소모품 50% · 임차 30% · 강사 50% · 체험 10% · 식사 10%</td><td>48.2 · 6.5 · 30.1 · 0 · 8.3</td><td class="ok">✓ <span class="small">(소모품 주의)</span></td></tr>
+    <tr><td>단가 상한</td><td>다과 4,000 · 현수막 80,000 · 3급 2시간 100,000</td><td class="ok">✓</td></tr>
+    <tr><td>10월 31일</td><td>돌아보기 10월 마지막 주</td><td class="ok">✓</td></tr>
+    <tr><td>금지 낱말</td><td>월세·상품·택배·술·보조강사·회원 강사 없음 / "인쇄" → 회비로</td><td class="ok">✓</td></tr>
+    <tr><td>"1식"</td><td>없음, 모두 단가 × 인원 × 횟수</td><td class="ok">✓</td></tr>
+    <tr><td>모임명 15자</td><td>7자</td><td class="ok">✓</td></tr>
+    <tr><td>활동분야 1개</td><td>복지/돌봄/나눔</td><td class="ok">✓</td></tr>
+    <tr><td><mark>[확인]</mark> 남은 것</td><td>남·여 수 / 체조교실 횟수 / 1단계 사업명 / 천막 견적 / 마을회 승낙 / 역량교육 기록</td><td class="partial">6개 — 내보내기 전 채움</td></tr>
+  </table>
+
+  <h3>이 샘플에서 확인된 것 · 앱에 넣을 때 바꿀 것</h3>
+  <ul>
+    <li>쏟아내기 한 번(회장 1분 반 + 총무·회원 한마디)으로 12칸 중 8칸이 찼다. 되묻기는 4개로 끝났다. <b>질문 8개를 다 묻는 것보다 빠르다.</b></li>
+    <li>돈은 팀이 비목을 몰라도 됐다. "재료 4천 원, 선생님 월 1회 2시간, 현수막, 천막"에서 5줄 예산표가 나왔다. 천막 값만 <mark>[확인]</mark>.</li>
+    <li>"요리책"처럼 <b>팀이 하고 싶은데 보조금으로 안 되는 것</b>이 꼭 나온다. 심사위원 모드가 아니라 ④ 초안 단계에서 "이건 회비로 돌렸어요"라고 알려 주는 것이 좋다 → 15-4 코드 점검에 "자체 경비 돌리기" 추가.</li>
+    <li><mark>[확인]</mark> 6개 중 3개는 모임 자료(남녀 수·사업명·횟수)라 <b>입장할 때 숫자 칸으로 미리 받으면</b> 되묻기가 준다(13-1절 3번 그대로).</li>
+    <li>글 분량: 신청서 "사업 내용" 약 330자, 필요성 4문단 약 600자. 서식 칸에는 들어가지만 어르신이 읽기엔 길 수 있다. <b>리사 님 판단 ㉡.</b></li>
+  </ul>
+</section>
+
+</div>
+</body>
+</html>
