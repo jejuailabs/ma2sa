@@ -19,16 +19,29 @@ export const villageSections = [
 export const planQuestions = [
   { key: 'need', title: '우리 마을에서 무엇을 바꾸고 싶나요?', hint: '불편한 점이나 함께 해결하고 싶은 일을 편하게 말해 주세요.', example: '마을회관이 낡아서 어르신들이 편하게 쉬실 공간이 부족해요.' },
   { key: 'target', title: '누구를 위한 일인가요?', hint: '어떤 주민에게 도움이 될지 알려 주세요. 인원을 알면 함께 적어 주세요.', example: '마을 어르신과 아이들이 함께 이용하면 좋겠어요.' },
-  { key: 'activities', title: '어떤 일을 할 건가요?', hint: '공간을 고치거나 함께 할 활동을 말해 주세요.', example: '회관 벽을 칠하고, 수리한 공간에서 주 1회 주민 모임을 열고 싶어요.' },
-  { key: 'participation', title: '주민들은 어떻게 참여하나요?', hint: '함께 준비하고 맡을 일을 알려 주세요.', example: '주민들이 청소와 페인트칠에 참여하고, 모임 운영도 돌아가며 맡아요.' },
+  { key: 'activities', title: '어떤 일을 할 건가요?', hint: '할 활동과 장소, 그 장소를 써도 되는지 함께 말해 주세요.', example: '회관 벽을 칠하고, 수리한 공간에서 주 1회 주민 모임을 열고 싶어요.' },
+  { key: 'participation', title: '주민들은 어떻게 참여하나요?', hint: '각자 맡을 일, 함께해 주는 곳, 의견을 정하는 방법을 알려 주세요.', example: '주민들이 청소와 페인트칠에 참여하고, 모임 운영도 돌아가며 맡아요.' },
   { key: 'schedule', title: '언제, 몇 번 진행하나요?', hint: '시작과 마무리 시기, 모임 횟수를 아는 만큼 말해 주세요.', example: '다음 달에 수리하고, 이후에는 매주 한 번씩 모이고 싶어요.' },
   { key: 'budget', title: '무엇을 사고, 누구를 부르나요?', hint: '재료, 강사, 공사비 등 필요한 항목과 금액을 알려 주세요.', example: '페인트와 청소 도구가 필요해요. 정확한 가격은 견적을 받아봐야 해요.' },
-  { key: 'effects', title: '끝나면 무엇이 달라질까요?', hint: '주민들의 생활이나 마을에 생길 변화를 말해 주세요.', example: '어르신들이 편하게 쉬고, 주민들이 더 자주 만나게 될 거예요.' },
-  { key: 'groupIntro', title: '우리 모임을 소개해 주세요.', hint: '모이게 된 계기와 지금까지 함께 한 일을 알려 주세요.', example: '주민 10명이 작년부터 모여 마을 청소와 어르신 안부 확인을 해왔어요.' },
+  { key: 'effects', title: '끝나면 무엇이 달라질까요?', hint: '무엇이 달라지는지, 그걸 어떻게 알 수 있는지, 내년에도 이어 갈 방법을 말해 주세요.', example: '어르신들이 편하게 쉬고, 주민들이 더 자주 만나게 될 거예요.' },
+  { key: 'groupIntro', title: '우리 모임을 소개해 주세요.', hint: '모인 계기, 시작한 해, 구성원 수와 지금까지 함께 한 일을 알려 주세요.', example: '주민 10명이 작년부터 모여 마을 청소와 어르신 안부 확인을 해왔어요.' },
 ] as const;
 
 export type PlanBasics = { type: 'community' | 'happiness'; group: string; title: string; address: string; representative: string; phone: string; grant: string; contribution: string };
-export type PlanResult = { title: string; sections: Record<string, string> };
+export type PlanResult = {
+  title: string;
+  sections: Record<string, string>;
+  supportArea?: 'space' | 'activity';
+  year?: string;
+  activityField?: string;
+  summary?: string;
+  scheduleRows?: { name: string; when: string; content: string }[];
+  budgetRows?: { name: string; category: string; amount: number | null; basis: string }[];
+  founded?: string;
+  members?: string;
+  history?: string;
+  fundingHistory?: string[][];
+};
 export const planSectionLabels: Record<string, string> = { purpose: '사업의 목적 및 필요성', target: '사업 대상', activities: '사업 내용 및 활용계획', participation: '주민 참여 계획', schedule: '사업추진 일정', budget: '예산 계획', effects: '기대효과', groupIntro: '모임 소개' };
 export const blankBasics: PlanBasics = { type: 'community', group: '', title: '', address: '', representative: '', phone: '', grant: '', contribution: '' };
 
