@@ -16,13 +16,13 @@ const cellsOf = (row: Node) => children(row, 'hp:tr').filter(n => 'hp:tc' in n);
 
 // Leave room for the anchor paragraph and differences between Hancom versions.
 const PAGE_HEIGHT = 68000;
-const MAX_ROW_HEIGHT = 52000;
+const MAX_ROW_HEIGHT = 40000;
 
 /** Fill a clean form, measure its cells and paginate complete row groups.
  * Explicit page tables avoid relying on a viewer to grow stale template rows.
  * A long narrative is continued without truncating it or shrinking its font.
  */
-export function prepareHwpxLayout(xml: string, fields: Record<string, string>, scheduleCount: number, budgetCount: number, headerXml: string) {
+export function prepareHwpxLayout(xml: string, fields: Record<string, string>, scheduleCount: number, budgetCount: number, headerXml: string, mergeProject = false) {
   const parser = new XMLParser(options);
   const document = parser.parse(xml) as Node[];
   const header = parser.parse(headerXml) as Node[];
@@ -43,7 +43,7 @@ export function prepareHwpxLayout(xml: string, fields: Record<string, string>, s
           if (!('hp:tr' in item)) return true;
           const value = content(children(item, 'hp:tr'));
           const optional = value.trim().match(/^\{\{(effects|effectsHeading|summaryDetail|summaryDetailHeading|budgetNarrative|budgetNarrativeHeading)\}\}$/);
-          if (optional && !fields[optional[1]]) return false;
+          if (optional && !fields[optional[1]]) return !mergeProject;
           const slot = value.match(/\{\{(schedule|budget)(\d+)(?:Name|Category|When|Content|Amount|Basis)\}\}/);
           return !slot || Number(slot[2]) < (slot[1] === 'schedule' ? scheduleCount : budgetCount);
         });
@@ -97,15 +97,17 @@ export function prepareHwpxLayout(xml: string, fields: Record<string, string>, s
     return { height: Math.ceil(height), width, paragraphs, sub };
   }
 
-  function measureTable(table: Node) {
+  function measureTable(table: Node, measureProjectText = false) {
     const rows = rowsOf(table);
+    const projectGrid = mergeProject && /추진계획|비목별 예산계획/.test(content(children(rows[0], 'hp:tr')));
     const heights = rows.map(() => 2400);
     const spanning: { cell: Node; start: number; span: number; height: number }[] = [];
     rows.forEach((row, index) => cellsOf(row).forEach(cell => {
       const parts = cellParts(cell);
       attrs(find(parts, 'hp:cellAddr')!).rowAddr = String(index);
       const span = Number(attrs(find(parts, 'hp:cellSpan')!).rowSpan);
-      const height = Math.max(cellMetrics(cell).height, index === 0 ? 3200 : 2400);
+      const projectCell = projectGrid && attrs(find(parts, 'hp:cellAddr')!).colAddr === '0' && attrs(find(parts, 'hp:cellSpan')!).colSpan === '1' && content(parts) === fields.title;
+      const height = Math.max(projectCell && span === 1 && !measureProjectText ? 0 : cellMetrics(cell).height, Number(attrs(find(parts, 'hp:cellSz')!).height), index === 0 ? 3200 : 2400);
       if (span === 1) heights[index] = Math.max(heights[index], height);
       else spanning.push({ cell, start: index, span, height });
     }));
@@ -156,6 +158,7 @@ export function prepareHwpxLayout(xml: string, fields: Record<string, string>, s
     return Array.from({ length: Math.max(...chunks.map(parts => parts.length)) }, (_, index) => {
       const part = clone(row);
       cellsOf(part).forEach((cell, column) => {
+        attrs(find(cellParts(cell), 'hp:cellSz')!).height = '2400';
         const sub = find(cellParts(cell), 'hp:subList')!;
         const empty = clone(cellMetrics(cell).paragraphs[0]); setParagraphText(empty, '');
         sub['hp:subList'] = chunks[column][index] || [empty];
@@ -167,7 +170,8 @@ export function prepareHwpxLayout(xml: string, fields: Record<string, string>, s
   function paginate(table: Node): Node[] {
     const originalRows = rowsOf(table);
     const title = content(children(originalRows[0], 'hp:tr'));
-    const headerCount = /사업추진 계획|비목별 예산계획/.test(title) ? 2 : 1;
+    const headerCount = 1;
+    const gridHeader = originalRows.find((row, index) => index > 0 && cellsOf(row).length > 1 && cellsOf(row).every(cell => attrs(cell).header === '1'));
     const expanded = originalRows.flatMap((row, index) => index < headerCount ? [row] : splitTallRow(row));
     table['hp:tbl'] = [...children(table, 'hp:tbl').filter(n => !('hp:tr' in n)), ...expanded];
     const heights = measureTable(table);
@@ -177,16 +181,24 @@ export function prepareHwpxLayout(xml: string, fields: Record<string, string>, s
       let end = index + 1;
       const firstText = content(children(expanded[index], 'hp:tr')).trim();
       // Keep section headings with the first following content row.
-      if (/^(사업의 목적 및 필요성|주민 참여 계획|기대효과|사업 개요 상세|예산 설명)$/.test(firstText)) end++;
+      if ((cellsOf(expanded[index]).length === 1 && attrs(cellsOf(expanded[index])[0]).header === '1') || expanded[index] === gridHeader) end++;
       if (firstText.includes('개인정보 수집')) end = expanded.length;
+      end = Math.min(end, expanded.length);
       for (let i = index; i < end; i++) for (const cell of cellsOf(expanded[i])) end = Math.max(end, i + Number(attrs(find(cellParts(cell), 'hp:cellSpan')!).rowSpan));
       groups.push(expanded.slice(index, end)); index = end;
     }
     const pages: Node[][] = []; let page: Node[] = [], height = headerHeight;
+    let passedGrid = false;
     for (const group of groups) {
       const groupHeight = group.reduce((sum, row) => sum + heights[expanded.indexOf(row)], 0);
-      if (page.length && height + groupHeight > PAGE_HEIGHT) { pages.push(page); page = []; height = headerHeight; }
+      if (page.length && height + groupHeight > PAGE_HEIGHT) {
+        pages.push(page); page = []; height = headerHeight;
+        if (passedGrid && gridHeader && cellsOf(group[0]).length > 1) {
+          page.push(gridHeader); height += heights[expanded.indexOf(gridHeader)];
+        }
+      }
       page.push(...group); height += groupHeight;
+      if (group.includes(gridHeader!)) passedGrid = true;
     }
     if (page.length) pages.push(page);
     return pages.map((pageRows, index) => {
@@ -198,10 +210,24 @@ export function prepareHwpxLayout(xml: string, fields: Record<string, string>, s
         const p = cellMetrics(titleCell).paragraphs[0];
         setParagraphText(p, `${content(children(p, 'hp:p')).trim()} (계속)`);
       }
+      // Merge the reference's project-name column only within this page.
+      // Pagination is calculated first so a long project never locks all rows.
+      if (mergeProject && /추진계획|비목별 예산계획/.test(title)) {
+        const pageRows = rowsOf(pageTable);
+        const dataRows = pageRows.filter(row => {
+          const cells = cellsOf(row), first = cells[0];
+          return cells.length >= 3 && attrs(first).header !== '1' && Number(attrs(find(cellParts(first), 'hp:cellSpan')!).colSpan) === 1 && content(cellParts(first)) === fields.title;
+        });
+        if (dataRows.length > 1) {
+          const first = cellsOf(dataRows[0])[0];
+          attrs(find(cellParts(first), 'hp:cellSpan')!).rowSpan = String(dataRows.length);
+          for (const row of dataRows.slice(1)) row['hp:tr'] = children(row, 'hp:tr').filter(cell => cell !== cellsOf(row)[0]);
+        }
+      }
       // Whole page tables are inline: honor the document margins, with no
       // floating anchors that depend on cached line positions from the sample.
       Object.assign(attrs(find(children(pageTable, 'hp:tbl'), 'hp:pos')!), { treatAsChar: '1', affectLSpacing: '1', vertRelTo: 'PARA', horzRelTo: 'COLUMN', vertOffset: '0', horzOffset: '0' });
-      const pageHeight = measureTable(pageTable).reduce((sum, height) => sum + height, 0);
+      const pageHeight = measureTable(pageTable, true).reduce((sum, height) => sum + height, 0);
       if (pageHeight > PAGE_HEIGHT) throw new ApiError(422, 'DOCUMENT_FIELD_TOO_LONG', '모임 기본정보나 이전 지원 내역이 한 쪽보다 길어요. 해당 항목을 간결하게 정리한 뒤 다시 받아 주세요.');
       return pageTable;
     });

@@ -35,6 +35,8 @@ export type PlanResult = {
   year?: string;
   activityField?: string;
   summary?: string;
+  period?: string;
+  operation?: Partial<Record<'roles' | 'serviceProcess' | 'safety' | 'records', string>>;
   scheduleRows?: { name: string; when: string; content: string }[];
   budgetRows?: { name: string; category: string; amount: number | null; basis: string }[];
   founded?: string;
@@ -43,6 +45,10 @@ export type PlanResult = {
   fundingHistory?: string[][];
 };
 export const planSectionLabels: Record<string, string> = { purpose: '사업의 목적 및 필요성', target: '사업 대상', activities: '사업 내용 및 활용계획', participation: '주민 참여 계획', schedule: '사업추진 일정', budget: '예산 계획', effects: '기대효과', groupIntro: '모임 소개' };
+export const happinessSectionLabels: Record<string, string> = { ...planSectionLabels, target: '서비스 대상 및 지역', activities: '생활서비스 및 지역 특색사업', participation: '주민참여 및 협력 계획', groupIntro: '관리소 현황 및 운영 주체' };
+export const operationLabels = { roles: '담당 인력과 역할 분담', serviceProcess: '서비스 접수 및 기관 연계', safety: '현장 안전 및 개인정보 관리', records: '실적 기록 및 성과 확인' };
+export const planLabels = (type: PlanBasics['type']) => type === 'happiness' ? happinessSectionLabels : planSectionLabels;
+export const planFilename = (type: PlanBasics['type']) => `${type === 'happiness' ? '행복마을관리소' : '마을공동체'}-사업계획서-초안.hwpx`;
 export const blankBasics: PlanBasics = { type: 'community', group: '', title: '', address: '', representative: '', phone: '', grant: '', contribution: '' };
 
 export function budgetSummary(basics: PlanBasics) {

@@ -8,3 +8,5 @@
 .lp-consent-panel .lp-consent input{width:19px;height:19px;margin:0}
 .lp-call-controls .lp-start{min-height:44px}
 @media(max-width:720px){.lp-voice-stage{padding:23px 16px 20px}.lp-consent-panel{padding:11px 12px}}
+
+.lp-result .exp-review-card{border:1px solid #dfe7d6;border-radius:10px;background:#fff;padding:14px;margin:0 0 18px}.lp-result .exp-review-card summary{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;min-height:40px;font-weight:650;color:#405836}.lp-result .exp-field{display:flex;flex-direction:column;gap:8px;margin:14px 0;font-size:13px;color:#405836}.lp-result .exp-field input,.lp-result .exp-field textarea{width:100%;min-width:0;border:1px solid #dfe7d6;border-radius:8px;padding:10px 12px;line-height:1.7;color:#18271d;background:#fff}.lp-result .exp-field textarea{min-height:100px;resize:vertical}.lp-result .exp-detail-rows fieldset{border:0;min-width:0;margin:18px 0 0;padding:0}.lp-result .exp-detail-rows legend{font-weight:650}.lp-result .exp-input-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}.lp-result .exp-input-pair .exp-field{min-width:0}
