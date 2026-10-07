@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, Bell, Home, Shield } from 'lucide-react';
+import { Menu, X, Bell, Home, Shield, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from './ThemeToggle';
 import { Avatar } from './Avatar';
@@ -60,6 +60,9 @@ export function Header({ activeTab, onTabChange, showTabs = false }: HeaderProps
         )}
 
         <div className="flex items-center gap-2 ml-auto">
+          <Link href="/experience" className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-primary hover:bg-[var(--color-surface)]">
+            <Sparkles className="w-4 h-4" aria-hidden="true" /> 무료 체험
+          </Link>
           <ThemeToggle />
           <button className="p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">
             <Bell className="w-5 h-5" />
@@ -125,6 +128,9 @@ export function Header({ activeTab, onTabChange, showTabs = false }: HeaderProps
       {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 space-y-1">
+          <Link href="/experience" className="flex min-h-[44px] items-center gap-2 px-3 py-2 rounded-lg text-sm text-primary font-semibold" onClick={() => setMobileMenuOpen(false)}>
+            <Sparkles className="w-4 h-4" aria-hidden="true" /> 무료 체험
+          </Link>
           {showTabs && CATEGORY_TABS.map((tab) => (
             <button
               key={tab.key}
