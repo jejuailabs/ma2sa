@@ -10,7 +10,7 @@ from xml.dom import minidom
 
 path = Path(__file__).resolve().parents[1] / 'src/lib/experience/community-template.json'
 template = json.loads(path.read_text(encoding='utf-8'))
-if template.get('layoutVersion') == 2:
+if template.get('layoutVersion', 0) >= 2:
     raise SystemExit('Layout version 2 already applied.')
 entries = {entry['name']: entry for entry in template['entries']}
 section = minidom.parseString(base64.b64decode(entries['Contents/section0.xml']['data']))
