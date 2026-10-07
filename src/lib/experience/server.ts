@@ -6,16 +6,21 @@ const cookieName='ma2sa_experience';
 const ttl=6*60*60;
 const reservations=new WeakSet<Request>();
 export const wasReserved=(request:Request)=>reservations.has(request);
+function redisConfig(){
+  if(process.env.UPSTASH_REDIS_REST_URL||process.env.UPSTASH_REDIS_REST_TOKEN)return {url:process.env.UPSTASH_REDIS_REST_URL,token:process.env.UPSTASH_REDIS_REST_TOKEN};
+  return {url:process.env.KV_REST_API_URL,token:process.env.KV_REST_API_TOKEN};
+}
 function configured(){
   if(process.env.EXPERIENCE_ENABLED!=='1')throw new ApiError(503,'EXPERIENCE_DISABLED','AI 체험을 준비 중이에요. 화면을 둘러보거나 답변을 먼저 작성할 수 있습니다.');
-  if(!process.env.EXPERIENCE_SESSION_SECRET||process.env.EXPERIENCE_SESSION_SECRET.length<32||!process.env.UPSTASH_REDIS_REST_URL||!process.env.UPSTASH_REDIS_REST_TOKEN)throw new ApiError(503,'EXPERIENCE_NOT_CONFIGURED','AI 체험 연결을 준비 중이에요. 작성한 답변은 이 기기에 남아 있습니다.');
+  const {url,token}=redisConfig();
+  if(!process.env.EXPERIENCE_SESSION_SECRET||process.env.EXPERIENCE_SESSION_SECRET.length<32||!url||!token)throw new ApiError(503,'EXPERIENCE_NOT_CONFIGURED','AI 체험 연결을 준비 중이에요. 작성한 답변은 이 기기에 남아 있습니다.');
   const end=process.env.EXPERIENCE_ENDS_AT;
   if(end&&(!Number.isFinite(Date.parse(end))||Date.now()>=Date.parse(end)))throw new ApiError(403,'EXPERIENCE_ENDED','이번 AI 체험 기간이 끝났어요. 작성한 내용을 확인하고 내려받을 수 있습니다.');
 }
 export function sameOrigin(request:Request){const origin=request.headers.get('origin');let valid=false;try{const parsed=new URL(origin||'');valid=['http:','https:'].includes(parsed.protocol)&&parsed.host===request.headers.get('host');}catch{}if(!valid)throw new ApiError(403,'INVALID_ORIGIN','이 페이지에서 다시 시도해 주세요.');}
 const digest=(value:string)=>createHmac('sha256',process.env.EXPERIENCE_SESSION_SECRET!).update(value).digest('hex');
 function sessionId(request:Request){const cookie=request.headers.get('cookie')?.split(';').map(value=>value.trim()).find(value=>value.startsWith(`${cookieName}=`))?.slice(cookieName.length+1);if(!cookie)return null;const[id,expiry,signature]=cookie.split('.');if(!/^[a-f0-9]{48}$/.test(id||'')||!/^\d{13}$/.test(expiry||'')||!/^[a-f0-9]{64}$/.test(signature||''))return null;if(Number(expiry)<=Date.now())return null;const expected=digest(`${id}.${expiry}`);if(!timingSafeEqual(Buffer.from(signature),Buffer.from(expected)))return null;return id;}
-async function redis(command:(string|number)[]){try{const response=await fetch(process.env.UPSTASH_REDIS_REST_URL!,{method:'POST',headers:{authorization:`Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,'content-type':'application/json'},body:JSON.stringify(command),cache:'no-store',signal:AbortSignal.timeout(8000)});const payload=await response.json() as {result?:unknown;error?:string};if(!response.ok||payload.error)throw new Error('Limit service unavailable');return payload.result;}catch{throw new ApiError(503,'EXPERIENCE_LIMIT_UNAVAILABLE','체험 연결이 잠시 불안정해요. 잠시 후 다시 시도해 주세요.');}}
+async function redis(command:(string|number)[]){try{const {url,token}=redisConfig();const response=await fetch(url!,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify(command),cache:'no-store',signal:AbortSignal.timeout(8000)});const payload=await response.json() as {result?:unknown;error?:string};if(!response.ok||payload.error)throw new Error('Limit service unavailable');return payload.result;}catch{throw new ApiError(503,'EXPERIENCE_LIMIT_UNAVAILABLE','체험 연결이 잠시 불안정해요. 잠시 후 다시 시도해 주세요.');}}
 export async function createSession(request:Request){sameOrigin(request);configured();const existing=sessionId(request);if(existing&&await redis(['EXISTS',`experience:session:${existing}`]))return {cookie:null};
   const ip=request.headers.get('x-vercel-forwarded-for')?.split(',')[0]?.trim()||request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()||'local';const day=new Date().toISOString().slice(0,10);const ipKey=`experience:issued:${day}:${digest(ip)}`;const sessionDay=`experience:sessions:${day}`;
   const allowed=await redis(['EVAL',"local a=tonumber(redis.call('GET',KEYS[1]) or '0'); local b=tonumber(redis.call('GET',KEYS[2]) or '0'); if a>=120 or b>=600 then return 0 end; redis.call('INCR',KEYS[1]); redis.call('EXPIRE',KEYS[1],86400); redis.call('INCR',KEYS[2]); redis.call('EXPIRE',KEYS[2],86400); return 1",2,ipKey,sessionDay]);if(allowed!==1)throw new ApiError(429,'EXPERIENCE_BUSY','지금은 체험 접속이 많아요. 잠시 후 다시 접속해 주세요.');

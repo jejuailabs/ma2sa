@@ -1,0 +1,34 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const ts = require('typescript');
+class ApiError extends Error { constructor(status, code, message) { super(message); this.status = status; this.code = code; } }
+const source = fs.readFileSync(path.join(__dirname, '../src/lib/experience/server.ts'), 'utf8');
+const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+const env = { EXPERIENCE_ENABLED: '1', EXPERIENCE_SESSION_SECRET: 'test-only-session-key-that-is-not-a-real-secret' };
+const calls = [];
+const fakeFetch = async (url, options) => { calls.push({ url, token: options.headers.authorization }); return { ok: true, json: async () => ({ result: 1 }) }; };
+const compiled = { exports: {} };
+new Function('require', 'module', 'exports', 'process', 'fetch', output)(name => name === 'server-only' ? {} : name === '@/lib/experience/ai/errors' ? { ApiError } : require(name), compiled, compiled.exports, { env }, fakeFetch);
+const request = () => new Request('https://ma2sa.example/api/experience/session', { method: 'POST', headers: { origin: 'https://ma2sa.example', host: 'ma2sa.example' } });
+(async () => {
+  await assert.rejects(compiled.exports.createSession(request()), { code: 'EXPERIENCE_NOT_CONFIGURED' });
+  assert.equal(calls.length, 0);
+  env.KV_REST_API_URL = 'https://marketplace.example'; env.KV_REST_API_TOKEN = 'test-marketplace-token';
+  const session = await compiled.exports.createSession(request());
+  assert.match(session.cookie, /HttpOnly; SameSite=Strict/);
+  assert.match(session.cookie, /; Secure$/);
+  assert.equal(calls[0].url, env.KV_REST_API_URL);
+  assert.equal(calls[0].token, 'Bearer test-marketplace-token');
+  env.UPSTASH_REDIS_REST_URL = 'https://direct.example';
+  const previousCount = calls.length;
+  await assert.rejects(compiled.exports.createSession(request()), { code: 'EXPERIENCE_NOT_CONFIGURED' });
+  assert.equal(calls.length, previousCount, 'Never mix credentials from separate databases');
+  env.UPSTASH_REDIS_REST_TOKEN = 'test-direct-token';
+  await compiled.exports.createSession(request());
+  assert.equal(calls.at(-1).url, env.UPSTASH_REDIS_REST_URL);
+  assert.equal(calls.at(-1).token, 'Bearer test-direct-token');
+  env.EXPERIENCE_ENABLED = '0';
+  await assert.rejects(compiled.exports.createSession(request()), { code: 'EXPERIENCE_DISABLED' });
+  console.log('PASS: Vercel Redis bindings, direct credentials, missing configuration, and signed session flags');
+})().catch(error => { console.error(error); process.exitCode = 1; });

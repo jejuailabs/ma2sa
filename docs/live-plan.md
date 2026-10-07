@@ -10,6 +10,8 @@ GPT-Live(`gpt-live-1`)를 WebRTC로 연결하고, client delegation으로 기존
 
 ## 공개 운영
 
+Vercel Marketplace의 Upstash 연결이 생성하는 `KV_REST_API_URL`·`KV_REST_API_TOKEN`도 지원합니다. 직접 설정한 `UPSTASH_REDIS_REST_URL`·`UPSTASH_REDIS_REST_TOKEN`이 있으면 그 쌍을 우선하며, 두 방식의 URL과 토큰을 섞지 않습니다. `EXPERIENCE_ENABLED=1`과 32자 이상의 `EXPERIENCE_SESSION_SECRET`을 운영 환경에 저장한 다음 재배포합니다.
+
 production 및 비로컬 요청은 기존 체험 세션/Redis 설정과 제한을 적용합니다(`docs/experience.md` 참고). 세션별 음성 연결 3회·답변 정리 80회·문서 생성 2회, 일별 전체 상한을 별도로 적용합니다. 음성의 15분 종료는 브라우저 인터페이스 제한이며, 서버에서 강제하는 통화시간 할당량은 아닙니다. 공개 출시 전 공급자 지출 한도·동시 접속 정책과 서버측 통화 종료 제어를 검토해야 합니다.
 
 시작 전 음성/텍스트 전송 동의를 받습니다. 인터뷰 기록은 이 브라우저의 별도 localStorage 키에 24시간 보관합니다. 원본 녹음 파일은 저장하지 않으며 `store:false`로 Live 세션을 생성합니다. 이것이 공급자의 모든 보존 정책을 비활성화한다는 뜻은 아닙니다. 대표자·주소·연락처 입력란은 모델 프롬프트에서 제외하고 파일에만 사용합니다. 음성으로 말한 정보는 음성 모델에 전달됩니다.
