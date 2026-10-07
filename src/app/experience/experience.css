@@ -15,6 +15,17 @@
 .exp-plan-hero-with-qr{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:center}
 .exp-plan-hero-with-qr .exp-hero-copy{width:100%;min-width:0}
 .exp-plan-hero-with-qr .exp-hero-art{display:none}
+.exp-live-cta{display:flex;align-items:center;gap:11px;width:100%;max-width:315px;min-height:70px;margin-top:10px;padding:12px 14px;border:1px solid #f5de9d70;border-radius:15px;background:#f5de9d;color:#244d38;transition:background .18s,box-shadow .18s}
+.exp-live-cta:hover{background:#ffe9ad;box-shadow:0 4px 16px #122f3222}
+.exp-live-icon{display:flex;align-items:center;justify-content:center;width:36px;height:36px;flex-shrink:0;border-radius:11px;background:#244d3810}
+.exp-live-icon svg{width:23px;height:23px}
+.exp-live-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.exp-live-copy strong{font-size:15px;font-weight:750;line-height:1.4}
+.exp-live-copy small{font-size:10px;font-weight:500;line-height:1.5;color:#4f6244;word-break:keep-all}
+.exp-nav-live-badge{margin-left:auto;padding:2px 6px;border-radius:5px;background:#e4eddb;color:#45643c;font-size:9px;white-space:nowrap}
+.exp-sidebar .exp-nav-live{color:#f5de9d;background:#ffffff08}
+.exp-sidebar .exp-nav-live-badge{background:#f5de9d16;color:#f5de9d}
+@media(max-width:599px){.exp-live-cta{max-width:none}}
 .exp-hero-sample-link{display:inline-flex;align-items:center;gap:7px;min-height:44px;color:#f5de9d;font-size:12px;margin-top:7px}
 .exp-qr-share{display:flex;flex-direction:column;align-items:center;gap:12px;min-width:0;text-align:center;border-top:1px solid #ffffff26;padding-top:22px}
 .exp-qr-caption{font-size:12px;font-weight:650;color:#e2eddc}

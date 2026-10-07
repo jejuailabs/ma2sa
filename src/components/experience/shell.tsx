@@ -30,6 +30,7 @@ export function ExperienceShell({ children }: { children: React.ReactNode }) {
   const nav = <>
     <p className="exp-nav-label">직접 써보세요</p>
     <Link href="/experience" className={`exp-nav-item ${tools || wizard ? 'is-active' : ''}`} aria-current={tools || wizard ? 'page' : undefined} onClick={closeMenu}><Sparkles size={20} /> AI 도구 체험 <ChevronRight className="exp-nav-arrow" size={16} /></Link>
+    <Link href="/live-plan" className="exp-nav-item exp-nav-live" onClick={closeMenu}><ExperienceIcon name="conversation" /> AI와 대화하기 <span className="exp-nav-live-badge">음성</span></Link>
     <p className="exp-nav-label exp-nav-label-spaced">우리 마을 둘러보기 <span>DEMO</span></p>
     {villageSections.map(item => <Link key={item.slug} href={`/experience/village/${item.slug}`} onClick={closeMenu} className={`exp-nav-item ${pathname.endsWith(`/village/${item.slug}`) ? 'is-active' : ''}`} aria-current={pathname.endsWith(`/village/${item.slug}`) ? 'page' : undefined}><ExperienceIcon name={item.icon} />{item.title}</Link>)}
   </>;

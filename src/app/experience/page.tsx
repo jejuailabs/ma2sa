@@ -8,7 +8,19 @@ export default function ExperiencePage() {
   return <>
     <div className="exp-page-intro"><p className="exp-eyebrow"><span className="exp-status-dot" /> 로그인 없이 무료 체험</p><h1>우리 마을의 일,<br className="exp-mobile-break" /> 조금 더 가볍게.</h1><p>말 한마디, 사진 한 장으로 시작해 보세요.</p></div>
     <section className="exp-plan-hero exp-plan-hero-with-qr" aria-label="사업계획서 체험과 QR 공유">
-      <div className="exp-hero-copy"><span className="exp-hero-badge"><Sparkles size={14} /> 먼저 체험해 보세요</span><h2>말로 만드는<br />사업계획서</h2><p>무엇부터 써야 할지 막막할 때,<br />질문에 답하는 것부터 시작해요.</p><span className="exp-hero-facts"><span><Check size={15} /> 쉬운 질문 8개</span><span><Check size={15} /> 말하기·직접 입력</span></span><Link href="/experience/business-plan" className="exp-hero-cta">우리 마을 계획서 만들기 <ArrowRight size={20} /></Link><Link href="/experience/business-plan/sample" className="exp-hero-sample-link">새터 반찬 두레 샘플 보기 <ArrowRight size={15}/></Link></div>
+      <div className="exp-hero-copy">
+        <span className="exp-hero-badge"><Sparkles size={14} /> 먼저 체험해 보세요</span>
+        <h2>말로 만드는<br />사업계획서</h2>
+        <p>무엇부터 써야 할지 막막할 때,<br />질문에 답하는 것부터 시작해요.</p>
+        <span className="exp-hero-facts"><span><Check size={15} /> 쉬운 질문 8개</span><span><Check size={15} /> 말하기·직접 입력</span></span>
+        <Link href="/experience/business-plan" className="exp-hero-cta">우리 마을 계획서 만들기 <ArrowRight size={20} /></Link>
+        <Link href="/live-plan" className="exp-live-cta" aria-label="AI와 대화하기" aria-describedby="exp-live-description">
+          <span className="exp-live-icon"><ExperienceIcon name="conversation" /></span>
+          <span className="exp-live-copy"><strong>AI와 대화하기</strong><small id="exp-live-description">AI가 묻고, 말이나 글로 답해요</small></span>
+          <ArrowRight size={18} />
+        </Link>
+        <Link href="/experience/business-plan/sample" className="exp-hero-sample-link">새터 반찬 두레 샘플 보기 <ArrowRight size={15}/></Link>
+      </div>
       <ExperienceQr />
       <div className="exp-hero-art" aria-hidden="true"><span className="exp-art-caption">생각을 말하면, 계획이 됩니다</span><div className="exp-art-mic"><Mic size={35} /><div className="exp-art-waves">{[12,23,32,18,40,28,16,33,24,12].map((height,i) => <i key={i} style={{height}} />)}</div></div><div className="exp-art-document"><span className="exp-art-check"><Check size={16} /></span><strong>우리 마을 사업계획서</strong><span /><span /><span /><div><i /><i /></div><small>함께 만드는 더 나은 내일</small></div><span className="exp-art-dot exp-art-dot-one" /><span className="exp-art-dot exp-art-dot-two" /></div>
     </section>
