@@ -1,5 +1,6 @@
 import 'server-only';
 import template from './community-template.json';
+import { prepareHwpxLayout } from './hwpx-layout';
 import { budgetSummary,planSectionLabels,type PlanBasics,type PlanResult } from './catalog';
 
 const crcTable=Array.from({length:256},(_,n)=>{let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;return c>>>0;});
@@ -57,7 +58,7 @@ export function buildCommunityHwpx(basics: PlanBasics, result: PlanResult) {
   const entries = template.entries.map(entry => {
     let data = Buffer.from(entry.data, 'base64');
     if (entry.name === 'Contents/section0.xml') {
-      let xml = data.toString('utf8');
+      let xml = prepareHwpxLayout(data.toString('utf8'), fields, Math.min(8, scheduleRows.length), Math.max(1, Math.min(8, budgetRows.length)));
       const field = (key: string) => Object.prototype.hasOwnProperty.call(fields, key) ? fields[key] : missing;
       xml = xml.replace(/<hp:p\b([^>]*)><hp:run\b([^>]*)><hp:t>\{\{([A-Za-z][A-Za-z0-9]*)\}\}<\/hp:t><\/hp:run><\/hp:p>/g, (_match, pAttrs, runAttrs, key) => {
         const lines = field(key).split(/\r?\n/);
